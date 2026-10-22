@@ -1,9 +1,8 @@
 node_modules
 dist
-.vercel
 *.log
 .DS_Store
-# Secrets: real keys live in Vercel and in .env.local only
+# Secrets: keep .env.local out of git
 .env
 .env.local
 .env.*.local
