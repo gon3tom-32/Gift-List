@@ -25,6 +25,9 @@ create table if not exists households (
   created_at  timestamptz not null default now()
 );
 
+-- 0002: shared couple photo beside the list title
+alter table households add column if not exists photo_path text;
+
 create table if not exists household_members (
   household_id uuid not null references households(id) on delete cascade,
   user_id      uuid not null references auth.users(id) on delete cascade,
