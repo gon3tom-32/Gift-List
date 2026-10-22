@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { errorText, isConfigured, supabase } from './lib/supabase';
+import { errorText, isConfigured, linkError, supabase } from './lib/supabase';
 import { SignIn } from './screens/SignIn';
 import { Setup } from './screens/Setup';
 import { Home } from './screens/Home';
@@ -75,7 +75,7 @@ export function App() {
         </main>
       );
     case 'signed-out':
-      return <SignIn />;
+      return <SignIn notice={linkError} />;
     case 'no-household':
       return (
         <Setup
