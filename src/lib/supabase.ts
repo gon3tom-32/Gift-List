@@ -54,6 +54,9 @@ export function errorText(err: unknown): string {
   if (code === 'over_email_send_rate_limit' || /rate limit|only request this after/i.test(message)) {
     return 'Too many sign-in emails were sent recently. Please wait a few minutes and try again.';
   }
+  if (code === 'invalid_credentials' || /invalid login credentials/i.test(message)) {
+    return "Wrong email or password. If you haven't set a password yet, use an email link first.";
+  }
   if (err instanceof Error) return err.message;
   if (typeof err === 'object' && 'message' in err && typeof err.message === 'string') return err.message;
   return 'Something went wrong.';
