@@ -2,15 +2,16 @@
 
 A playful, shared Christmas gift list and budget for a couple. Both partners sign in and edit the same list: groups (family, pets, coworkers…), people, and gifts that move from **idea → ordered → shipped → wrapped → given**.
 
-Built with Vite + React + TypeScript, Supabase (Postgres, Auth, Storage, Realtime), and Vercel.
+Built with Vite + React + TypeScript and Supabase (Postgres, Auth, Storage, Realtime, Edge Functions). Hosted on GitHub Pages at <https://gon3tom-32.github.io/Gift-List/>.
 
 ## Set up Supabase (once)
 
 1. Open your Gift-List project in Supabase → **SQL Editor**.
 2. Paste and run [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql). It creates the tables, Row Level Security, the private `gift-photos` bucket, and Realtime. It's safe to run again.
 3. Optional check: paste and run [`supabase/tests/rls_test.sql`](supabase/tests/rls_test.sql). It should end with `ALL RLS TESTS PASSED`. It rolls itself back, so it leaves no test data.
-4. **Authentication → URL Configuration**: set **Site URL** to your Vercel address (e.g. `https://gift-list.vercel.app`) and add it, plus `http://localhost:5173`, to **Redirect URLs**. Magic links only return to addresses on this list.
-5. **Project Settings → API**: copy the **Project URL** and the **anon / publishable** key. Never use the service role key in this app.
+4. **Authentication → URL Configuration**: set **Site URL** to `https://gon3tom-32.github.io/Gift-List/` and add it, plus `http://localhost:5173/Gift-List/`, to **Redirect URLs**. Magic links only return to addresses on this list.
+5. Deploy the link-preview function in `supabase/functions/link-preview/` (`supabase functions deploy link-preview --no-verify-jwt`). It checks sign-in itself.
+6. **Project Settings → API**: the **Project URL** and **publishable** key go in `.github/workflows/deploy.yml` and `.env.local`. Never use the service role key in this app.
 
 ## Run it locally
 
@@ -20,13 +21,13 @@ npm install
 npm run dev
 ```
 
-`.env.local` is git-ignored. Link previews (`/api/link-preview`) only work under Vercel (`vercel dev`) or once deployed; without them, you just type the gift name.
+`.env.local` is git-ignored. The app opens at `http://localhost:5173/Gift-List/`. Link previews call the deployed Edge Function; if it can't be reached, you just type the gift name.
 
-## Deploy to Vercel
+## Deploy (GitHub Pages)
 
-1. In Vercel, **Add New → Project** and import the `Gift-List` GitHub repo. It detects Vite.
-2. Under **Environment Variables**, add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
-3. Deploy, then put the Vercel URL into Supabase's Site URL and Redirect URLs (step 4 above).
+Every push to `main` runs `.github/workflows/deploy.yml`. It runs the tests, builds the app, and publishes it to GitHub Pages.
+
+One-time setup: in the repo on GitHub, open **Settings → Pages** and set **Source** to **GitHub Actions**.
 
 ## Using it
 
@@ -52,6 +53,7 @@ npm run test:db  # migration + RLS tests on a throwaway local Postgres (needs Po
 ## Security
 
 - Row Level Security is on for every table; every policy uses `is_household_member(household_id)`.
+- The deploy workflow holds only the public Supabase URL and publishable key. The service role key is never used.
 - Photos live in the private `gift-photos` bucket under `<household_id>/…` and are shown with short-lived signed URLs.
 - List data lives only in Supabase. The browser stores just the Supabase sign-in session.
 - Database changes go in new files under `supabase/migrations/`; `supabase/schema.sql` mirrors the full current schema.
