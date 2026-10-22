@@ -1,0 +1,103 @@
+import { format, parseISO } from 'date-fns';
+import { formatCents } from '../lib/money';
+import { NEXT_ACTION, nextStatus, type GiftStatus } from '../lib/status';
+import { memberName, type Gift, type Member, type Person } from '../lib/types';
+import { Avatar } from './Avatar';
+import { GiftPhoto } from './GiftPhoto';
+import { Icon } from './Icon';
+import { StatusBadge, StatusStrip } from './StatusStrip';
+
+export function buyerText(g: Gift, members: Member[], me: string): string | null {
+  if (g.shared) return 'Both of us';
+  if (!g.assigned_to) return null;
+  if (g.assigned_to === me) return 'Me';
+  return memberName(members.find((m) => m.user_id === g.assigned_to));
+}
+
+export function GiftCard({
+  gift,
+  person,
+  members,
+  me,
+  wiggle,
+  onOpen,
+  onStatus,
+}: {
+  gift: Gift;
+  person?: Person;
+  members: Member[];
+  me: string;
+  wiggle?: boolean;
+  onOpen: () => void;
+  onStatus: (to: GiftStatus) => void;
+}) {
+  const price = gift.paid ?? gift.estimate;
+  const next = nextStatus(gift.status);
+  const buyer = buyerText(gift, members, me);
+  return (
+    <article className={`gift-card${wiggle ? ' wiggle' : ''}${gift.status === 'given' ? ' is-given' : ''}`}>
+      <GiftPhoto path={gift.photo_path} alt="" onAdd={gift.photo_path ? undefined : onOpen} />
+      <div className="gift-body">
+        <div className="gift-top">
+          <StatusBadge status={gift.status} />
+          {price !== null && (
+            <span className="price">
+              {formatCents(price)}
+              {gift.paid === null && gift.estimate !== null && <span className="est"> est.</span>}
+            </span>
+          )}
+        </div>
+        <h3 className="gift-name">
+          {/* The whole card opens the gift; this button carries the name for screen readers. */}
+          <button type="button" className="stretched" onClick={onOpen}>
+            {gift.name}
+          </button>
+        </h3>
+        <p className="gift-meta small muted">
+          {[
+            person?.name && `For ${person.name}`,
+            gift.store,
+            buyer && `Buyer: ${buyer}`,
+            gift.ship_by && gift.status !== 'given' && `Ship by ${format(parseISO(gift.ship_by), 'MMM d')}`,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
+        <StatusStrip status={gift.status} compact />
+        {next && (
+          <button type="button" className="btn tiny next-step" onClick={() => onStatus(next)}>
+            <Icon name="check" size={16} /> {NEXT_ACTION[gift.status]}
+          </button>
+        )}
+      </div>
+    </article>
+  );
+}
+
+export function PersonCard({
+  person,
+  giftCount,
+  openCount,
+  total,
+  onOpen,
+}: {
+  person: Person;
+  giftCount: number;
+  openCount: number;
+  total: number;
+  onOpen: () => void;
+}) {
+  return (
+    <button type="button" className="person-card" onClick={onOpen}>
+      <Avatar name={person.name} photoPath={person.photo_path} size={52} />
+      <span className="person-name">{person.name}</span>
+      <span className="small muted">
+        {giftCount === 0
+          ? 'No ideas yet'
+          : `${giftCount} gift${giftCount === 1 ? '' : 's'}${openCount ? ` · ${openCount} open` : ' · all given'}`}
+      </span>
+      {total > 0 && <span className="small person-total">{formatCents(total, { whole: true })}</span>}
+      {person.budget !== null && total > person.budget && <span className="small over">Over budget</span>}
+    </button>
+  );
+}
