@@ -60,7 +60,7 @@ export function App() {
           <h1 className="display">Almost there</h1>
           <p>
             Add <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> to <code>.env.local</code> (or to
-            the Vercel project settings), then reload.
+            the deploy workflow in <code>.github/workflows/deploy.yml</code>), then reload.
           </p>
         </div>
       </main>
