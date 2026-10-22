@@ -3,7 +3,7 @@ import { errorText, supabase } from '../lib/supabase';
 import { Icon } from '../components/Icon';
 import { countdownText } from '../lib/christmas';
 
-export function SignIn() {
+export function SignIn({ notice }: { notice?: string | null }) {
   const [email, setEmail] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +37,7 @@ export function SignIn() {
         {state === 'sent' ? (
           <div className="notice" role="status">
             <p>
-              <strong>Check your email.</strong> We sent a sign-in link to {email.trim()}. Open it on this device.
+              <strong>Check your email.</strong> We sent a sign-in link to {email.trim()}. Tap the link in that email to come back here signed in.
             </p>
             <button className="btn link" onClick={() => setState('idle')}>
               Use a different email
@@ -45,6 +45,11 @@ export function SignIn() {
           </div>
         ) : (
           <form onSubmit={submit} className="stack">
+            {notice && !error && (
+              <p className="notice" role="status">
+                {notice}
+              </p>
+            )}
             <label className="field">
               <span>Email</span>
               <input
