@@ -6,6 +6,8 @@ import type { Cents } from '../lib/money';
 import { Sheet } from '../components/Sheet';
 import { MoneyField, TextField } from '../components/Fields';
 import { Avatar } from '../components/Avatar';
+import { PhotoPicker } from '../components/PhotoPicker';
+import { deletePhoto, uploadPhoto } from '../lib/photos';
 
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const { data, me, toast } = useApp();
@@ -18,6 +20,22 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [myName, setMyName] = useState(meMember?.display_name ?? '');
   const [inviteEmail, setInviteEmail] = useState('');
   const [busy, setBusy] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+
+  async function setPhoto(file: File | null) {
+    setPhotoBusy(true);
+    try {
+      const old = household.photo_path;
+      const path = file ? await uploadPhoto(household.id, 'household', household.id, file) : null;
+      await data.updateHousehold({ photo_path: path });
+      void deletePhoto(old);
+      toast(file ? 'Photo saved.' : 'Photo removed.');
+    } catch (err) {
+      toast(errorText(err));
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordMsg, setPasswordMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -77,6 +95,18 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
 
   return (
     <Sheet title="Our list" onClose={onClose}>
+      <section className="stack" aria-label="Our photo">
+        <h3 className="h4">Our photo</h3>
+        <PhotoPicker
+          preview={<Avatar name={household.name} photoPath={household.photo_path} size={72} />}
+          hasPhoto={Boolean(household.photo_path)}
+          busy={photoBusy}
+          onPick={(f) => void setPhoto(f)}
+          onRemove={() => void setPhoto(null)}
+          prompt="Add a photo of us"
+        />
+      </section>
+
       <form className="stack" onSubmit={saveList}>
         <TextField label="List name" value={listName} onChange={setListName} maxLength={60} />
         <MoneyField

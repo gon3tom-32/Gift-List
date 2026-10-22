@@ -26,4 +26,7 @@ psql_run() { psql -h "$dir" -p "$port" -U postgres -d postgres -v ON_ERROR_STOP=
 psql_run -f "$here/local_stubs.sql"
 psql_run -f "$root/supabase/migrations/0001_init.sql"
 psql_run -f "$root/supabase/migrations/0001_init.sql"   # proves it can re-run
+for m in "$root"/supabase/migrations/0*.sql; do
+  case "$m" in *0001_init.sql) ;; *) psql_run -f "$m" ;; esac
+done
 psql_run -f "$here/rls_test.sql"

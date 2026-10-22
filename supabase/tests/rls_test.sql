@@ -117,6 +117,18 @@ end $$;
 
 -- Updates and deletes silently match zero rows
 update households set budget = 999999 where id = (select v from t_ids where k = 'home');
+update households set photo_path = 'evil.webp' where id = (select v from t_ids where k = 'home');
+
+do $$
+declare ok boolean := false;
+begin
+  begin
+    insert into storage.objects (bucket_id, name)
+    select 'gift-photos', v || '/household/evil.webp' from t_ids where k = 'home';
+  exception when others then ok := true;
+  end;
+  if not ok then raise exception 'FAIL: non-member uploaded a household photo'; end if;
+end $$;
 update gifts set name = 'hacked';
 delete from gifts;
 delete from people;
@@ -253,18 +265,20 @@ begin
     raise exception 'FAIL: Mallory moved the gift';
   end if;
   if (select budget from households) <> 0          then raise exception 'FAIL: Mallory changed the budget'; end if;
+  if (select photo_path from households) is not null then raise exception 'FAIL: Mallory set the household photo'; end if;
   if (select count(*) from storage.objects where bucket_id = 'gift-photos') <> 1 then
     raise exception 'FAIL: Bob should see the photo';
   end if;
 end $$;
 
 update gifts set status = 'wrapped', assigned_to = (select v from t_ids where k = 'bob');
-update households set budget = 500.00;
+update households set budget = 500.00, photo_path = (select v from t_ids where k = 'home') || '/household/us.webp';
 
 do $$
 begin
   if (select status from gifts) <> 'wrapped' then raise exception 'FAIL: Bob could not update the gift'; end if;
   if (select budget from households) <> 500.00 then raise exception 'FAIL: Bob could not set the budget'; end if;
+  if (select photo_path from households) not like '%/household/us.webp' then raise exception 'FAIL: Bob could not set the household photo'; end if;
   if not exists (select 1 from gift_events where to_status = 'wrapped'
                  and user_id = (select v from t_ids where k = 'bob')) then
     raise exception 'FAIL: Bob''s status change was not logged as his';
