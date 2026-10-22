@@ -18,6 +18,32 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [myName, setMyName] = useState(meMember?.display_name ?? '');
   const [inviteEmail, setInviteEmail] = useState('');
   const [busy, setBusy] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordMsg, setPasswordMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function savePassword(e: FormEvent) {
+    e.preventDefault();
+    if (newPassword.length < 8) {
+      setPasswordMsg({ ok: false, text: 'Use at least 8 characters.' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordMsg({ ok: false, text: "The two passwords don't match." });
+      return;
+    }
+    setBusy(true);
+    setPasswordMsg(null);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setBusy(false);
+    if (error) {
+      setPasswordMsg({ ok: false, text: errorText(error) });
+    } else {
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordMsg({ ok: true, text: 'Password saved. Next time, sign in with your email and this password.' });
+    }
+  }
 
   async function saveList(e: FormEvent) {
     e.preventDefault();
@@ -123,6 +149,46 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           />
           <button className="btn" disabled={busy || !inviteEmail.trim()}>
             Send invite
+          </button>
+        </form>
+      </section>
+
+      <section className="stack section">
+        <h3 className="h4">Sign-in password</h3>
+        <p className="muted small">
+          Set a password so you can sign in without waiting for an email. It's just for you; your partner sets their own.
+        </p>
+        <form className="stack" onSubmit={savePassword}>
+          {/* Lets password managers save the password against the right email. */}
+          <input type="email" autoComplete="username" value={meMember?.email ?? ''} readOnly hidden />
+          <TextField
+            label="New password"
+            type="password"
+            autoComplete="new-password"
+            value={newPassword}
+            onChange={(v) => {
+              setNewPassword(v);
+              setPasswordMsg(null);
+            }}
+            hint="At least 8 characters."
+          />
+          <TextField
+            label="Confirm password"
+            type="password"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(v) => {
+              setConfirmPassword(v);
+              setPasswordMsg(null);
+            }}
+          />
+          {passwordMsg && (
+            <p className={passwordMsg.ok ? 'notice' : 'error'} role={passwordMsg.ok ? 'status' : 'alert'}>
+              {passwordMsg.text}
+            </p>
+          )}
+          <button className="btn" disabled={busy || !newPassword || !confirmPassword}>
+            Save password
           </button>
         </form>
       </section>

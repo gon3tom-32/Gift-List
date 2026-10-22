@@ -3,12 +3,35 @@ import { errorText, supabase } from '../lib/supabase';
 import { Icon } from '../components/Icon';
 import { countdownText } from '../lib/christmas';
 
+type Mode = 'password' | 'link';
+
 export function SignIn({ notice }: { notice?: string | null }) {
+  // A failed email link means the person is mid email-link sign-in.
+  const [mode, setMode] = useState<Mode>(notice ? 'link' : 'password');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [error, setError] = useState<string | null>(null);
 
-  async function submit(e: FormEvent) {
+  function switchTo(next: Mode) {
+    setMode(next);
+    setError(null);
+  }
+
+  async function signInWithPassword(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setState('sending');
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+    // On success the app's sign-in listener takes over.
+    if (error) setError(errorText(error));
+    setState('idle');
+  }
+
+  async function sendLink(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setState('sending');
@@ -25,6 +48,27 @@ export function SignIn({ notice }: { notice?: string | null }) {
     }
   }
 
+  const emailField = (
+    <label className="field">
+      <span>Email</span>
+      <input
+        type="email"
+        inputMode="email"
+        autoComplete="email"
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="you@example.com"
+      />
+    </label>
+  );
+
+  const errorLine = error && (
+    <p className="error" role="alert">
+      {error}
+    </p>
+  );
+
   return (
     <main className="center-screen">
       <div className="card narrow signin">
@@ -37,40 +81,67 @@ export function SignIn({ notice }: { notice?: string | null }) {
         {state === 'sent' ? (
           <div className="notice" role="status">
             <p>
-              <strong>Check your email.</strong> We sent a sign-in link to {email.trim()}. Tap the link in that email to come back here signed in.
+              <strong>Check your email.</strong> We sent a sign-in link to {email.trim()}. Tap the link in that email to
+              come back here signed in.
             </p>
             <button className="btn link" onClick={() => setState('idle')}>
               Use a different email
             </button>
           </div>
         ) : (
-          <form onSubmit={submit} className="stack">
+          <>
+            <div className="chip-row" role="group" aria-label="How to sign in">
+              <button
+                type="button"
+                className="chip"
+                aria-pressed={mode === 'password'}
+                onClick={() => switchTo('password')}
+              >
+                Password
+              </button>
+              <button type="button" className="chip" aria-pressed={mode === 'link'} onClick={() => switchTo('link')}>
+                Email link
+              </button>
+            </div>
+
             {notice && !error && (
               <p className="notice" role="status">
                 {notice}
               </p>
             )}
-            <label className="field">
-              <span>Email</span>
-              <input
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-              />
-            </label>
-            {error && (
-              <p className="error" role="alert">
-                {error}
-              </p>
+
+            {mode === 'password' ? (
+              <form onSubmit={signInWithPassword} className="stack">
+                {emailField}
+                <label className="field">
+                  <span>Password</span>
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </label>
+                {errorLine}
+                <button className="btn primary big" disabled={state === 'sending'}>
+                  {state === 'sending' ? 'Signing in…' : 'Sign in'}
+                </button>
+                <button type="button" className="btn link" onClick={() => switchTo('link')}>
+                  First time, or forgot your password? Get an email link instead
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={sendLink} className="stack">
+                {emailField}
+                {errorLine}
+                <button className="btn primary big" disabled={state === 'sending'}>
+                  {state === 'sending' ? 'Sending…' : 'Email me a sign-in link'}
+                </button>
+                <p className="muted small">After you're in, you can set a password in ⚙ settings.</p>
+              </form>
             )}
-            <button className="btn primary big" disabled={state === 'sending'}>
-              {state === 'sending' ? 'Sending…' : 'Email me a sign-in link'}
-            </button>
-          </form>
+          </>
         )}
       </div>
     </main>
