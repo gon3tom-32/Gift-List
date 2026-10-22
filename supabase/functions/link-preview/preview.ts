@@ -1,41 +1,28 @@
-// Vercel function: GET /api/link-preview?url=...   → { title, image, site }
-//                  GET /api/link-preview?image=... → the picture's bytes
-//
-// Browsers can't read other sites' pages, so this fetches them for the app.
-// Only signed-in users may call it, and it refuses private/internal addresses.
+// Link preview logic shared by the Supabase Edge Function (index.ts) and the tests.
+// No Node or Deno APIs here: DNS lookup is passed in with setResolver().
 
-import { lookup } from 'node:dns/promises';
-import { isIP } from 'node:net';
+/** Returns the host's IP addresses, or null when DNS lookup isn't available. */
+export type Resolver = (host: string) => Promise<string[] | null>;
+
+let resolver: Resolver = async () => null;
+
+export function setResolver(r: Resolver) {
+  resolver = r;
+}
+
+export function ipVersion(text: string): 0 | 4 | 6 {
+  if (/^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/.test(text)) return 4;
+  if (text.includes(':') && /^[0-9a-f:.]+$/i.test(text)) return 6;
+  return 0;
+}
 
 const MAX_HTML_BYTES = 600_000;
 const MAX_IMAGE_BYTES = 5_000_000;
 const TIMEOUT_MS = 5000;
 const MAX_REDIRECTS = 3;
 
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { 'content-type': 'application/json', 'cache-control': 'private, max-age=3600' },
-  });
-
-async function isSignedIn(request: Request): Promise<boolean> {
-  const auth = request.headers.get('authorization');
-  const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY;
-  if (!auth?.startsWith('Bearer ') || !url || !key) return false;
-  try {
-    const res = await fetch(`${url}/auth/v1/user`, {
-      headers: { authorization: auth, apikey: key },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
 export function isPrivateIp(ip: string): boolean {
-  if (isIP(ip) === 4) {
+  if (ipVersion(ip) === 4) {
     const [a, b] = ip.split('.').map(Number);
     return (
       a === 0 || a === 10 || a === 127 || a >= 224 ||
@@ -63,13 +50,14 @@ export async function assertPublicUrl(raw: string): Promise<URL> {
   if (url.port && url.port !== '80' && url.port !== '443') throw new Error('bad port');
   const host = url.hostname.replace(/^\[|\]$/g, '');
   if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.internal')) throw new Error('private host');
-  const addrs = isIP(host) ? [{ address: host }] : await lookup(host, { all: true });
-  if (addrs.length === 0 || addrs.some((a) => isPrivateIp(a.address))) throw new Error('private address');
+  const addrs = ipVersion(host) ? [host] : await resolver(host);
+  if (addrs === null) return url; // no DNS lookup on this runtime: literal IPs and names above are still checked
+  if (addrs.length === 0 || addrs.some((a) => isPrivateIp(a))) throw new Error('private address');
   return url;
 }
 
 /** Fetches with redirects followed by hand, so every hop is checked. */
-async function safeFetch(raw: string, accept: string): Promise<Response> {
+export async function safeFetch(raw: string, accept: string): Promise<Response> {
   let current = raw;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     const url = await assertPublicUrl(current);
@@ -92,7 +80,7 @@ async function safeFetch(raw: string, accept: string): Promise<Response> {
   throw new Error('too many redirects');
 }
 
-async function readLimited(res: Response, limit: number): Promise<Uint8Array> {
+export async function readLimited(res: Response, limit: number): Promise<Uint8Array> {
   const reader = res.body?.getReader();
   if (!reader) return new Uint8Array();
   const chunks: Uint8Array[] = [];
@@ -140,30 +128,20 @@ export function metaContent(html: string, names: string[]): string | null {
   return null;
 }
 
-export async function GET(request: Request): Promise<Response> {
-  if (!(await isSignedIn(request))) return json({ error: 'Sign in first' }, 401);
+export interface Preview {
+  title: string | null;
+  image: string | null;
+  site: string | null;
+}
 
-  const params = new URL(request.url).searchParams;
-  const pageUrl = params.get('url');
-  const imageUrl = params.get('image');
+const EMPTY: Preview = { title: null, image: null, site: null };
 
+/** Reads a page's title, picture and site name. Never throws. */
+export async function getPreview(pageUrl: string): Promise<Preview> {
   try {
-    if (imageUrl) {
-      const res = await safeFetch(imageUrl, 'image/avif,image/webp,image/png,image/jpeg,image/*');
-      const type = res.headers.get('content-type') ?? '';
-      if (!res.ok || !/^image\/(jpeg|png|webp|gif|avif)/.test(type)) return json({ error: 'Not a picture' }, 422);
-      const bytes = await readLimited(res, MAX_IMAGE_BYTES + 1);
-      if (bytes.byteLength > MAX_IMAGE_BYTES) return json({ error: 'Picture too big' }, 413);
-      return new Response(bytes.buffer as ArrayBuffer, {
-        headers: { 'content-type': type, 'cache-control': 'private, max-age=3600' },
-      });
-    }
-
-    if (!pageUrl) return json({ error: 'Missing url' }, 400);
     const res = await safeFetch(pageUrl, 'text/html,application/xhtml+xml');
     const type = res.headers.get('content-type') ?? '';
-    if (!res.ok || !type.includes('html')) return json({ title: null, image: null, site: null });
-
+    if (!res.ok || !type.includes('html')) return EMPTY;
     const html = new TextDecoder().decode(await readLimited(res, MAX_HTML_BYTES));
     const titleTag = /<title[^>]*>([^<]{1,300})<\/title>/i.exec(html)?.[1];
     const title = metaContent(html, ['og:title', 'twitter:title']) ?? (titleTag ? decodeEntities(titleTag) : null);
@@ -177,9 +155,22 @@ export async function GET(request: Request): Promise<Response> {
       }
     }
     const site = metaContent(html, ['og:site_name', 'application-name']);
-    return json({ title: title?.slice(0, 200) ?? null, image, site: site?.slice(0, 80) ?? null });
+    return { title: title?.slice(0, 200) ?? null, image, site: site?.slice(0, 80) ?? null };
   } catch {
-    // Unreachable, blocked, or private: the app falls back to typing the name.
-    return json({ title: null, image: null, site: null });
+    return EMPTY;
+  }
+}
+
+/** Downloads a picture (max 5 MB). Returns null if it isn't a usable image. */
+export async function getImage(imageUrl: string): Promise<{ bytes: Uint8Array; type: string } | null> {
+  try {
+    const res = await safeFetch(imageUrl, 'image/avif,image/webp,image/png,image/jpeg,image/*');
+    const type = res.headers.get('content-type') ?? '';
+    if (!res.ok || !/^image\/(jpeg|png|webp|gif|avif)/.test(type)) return null;
+    const bytes = await readLimited(res, MAX_IMAGE_BYTES + 1);
+    if (bytes.byteLength > MAX_IMAGE_BYTES) return null;
+    return { bytes, type };
+  } catch {
+    return null;
   }
 }

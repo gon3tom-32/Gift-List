@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assertPublicUrl, isPrivateIp, metaContent } from './link-preview';
+import { assertPublicUrl, isPrivateIp, metaContent, setResolver } from './preview.ts';
 
 describe('link preview safety', () => {
   it('flags private and internal addresses', () => {
@@ -27,5 +27,25 @@ describe('link preview safety', () => {
     expect(metaContent(html, ['og:title'])).toBe('Cozy & Warm Socks');
     expect(metaContent(html, ['og:image'])).toBe('https://x.test/a.jpg');
     expect(metaContent(html, ['og:site_name'])).toBeNull();
+  });
+});
+
+describe('DNS checks', () => {
+  it('refuses a name that resolves to a private address', async () => {
+    setResolver(async () => ['10.0.0.5']);
+    await expect(assertPublicUrl('https://sneaky.example/')).rejects.toThrow();
+    setResolver(async () => ['93.184.216.34', '::1']);
+    await expect(assertPublicUrl('https://mixed.example/')).rejects.toThrow();
+  });
+
+  it('allows a name that resolves to public addresses', async () => {
+    setResolver(async () => ['93.184.216.34']);
+    await expect(assertPublicUrl('https://shop.example/item')).resolves.toBeInstanceOf(URL);
+  });
+
+  it('still blocks literal private IPs when DNS is unavailable', async () => {
+    setResolver(async () => null);
+    await expect(assertPublicUrl('http://192.168.0.1/')).rejects.toThrow();
+    await expect(assertPublicUrl('http://2130706433/')).rejects.toThrow(); // 127.0.0.1 in disguise
   });
 });
