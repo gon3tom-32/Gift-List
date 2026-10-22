@@ -29,6 +29,8 @@ Every push to `main` runs `.github/workflows/deploy.yml`. It runs the tests, bui
 
 One-time setup: in the repo on GitHub, open **Settings → Pages** and set **Source** to **GitHub Actions**.
 
+The repo also builds on Vercel if a Vercel project is connected. There the app is served from `/` instead of `/Gift-List/`, and the project needs `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` set in its environment variables. Add the Vercel address to Supabase's Redirect URLs too.
+
 ## Using it
 
 - Sign in with your email, create the list, and enter your partner's email. When they sign in with that email, they join automatically. (The app doesn't send them an email itself, so tell them the link.)

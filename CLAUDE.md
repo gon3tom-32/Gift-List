@@ -6,7 +6,7 @@ A playful, shared Christmas gift list and budget app for a couple. Both partners
 
 - Frontend: Vite + React + TypeScript
 - Backend: Supabase (Postgres, Auth via email magic link, Storage, Realtime)
-- Hosting: GitHub Pages at https://gon3tom-32.github.io/Gift-List/, deployed by `.github/workflows/deploy.yml` on every push to `main`
+- Hosting: GitHub Pages at https://gon3tom-32.github.io/Gift-List/, deployed by `.github/workflows/deploy.yml` on every push to `main` (a connected Vercel project also builds it, served from `/`)
 - Server code: Supabase Edge Functions (`supabase/functions/`), e.g. link previews
 - Schema lives in `supabase/schema.sql`. Change the database only through new migration files (`supabase/migrations/`) or SQL reviewed in plan mode, then update `schema.sql` to match.
 
