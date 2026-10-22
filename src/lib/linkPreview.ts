@@ -1,7 +1,11 @@
-// Asks our small server function for a pasted link's title and picture.
+// Asks our Supabase Edge Function (supabase/functions/link-preview) for a
+// pasted link's title and picture.
 // Any failure just returns null: saving a gift never waits on this.
 
 import { supabase } from './supabase';
+
+const ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/link-preview`;
+const API_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 export interface LinkPreview {
   title: string | null;
@@ -12,7 +16,7 @@ export interface LinkPreview {
 async function authHeader(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return token ? { Authorization: `Bearer ${token}`, apikey: API_KEY } : { apikey: API_KEY };
 }
 
 export function looksLikeUrl(text: string): boolean {
@@ -35,7 +39,7 @@ export async function fetchLinkPreview(link: string, timeoutMs = 6000): Promise<
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(`/api/link-preview?url=${encodeURIComponent(link.trim())}`, {
+    const res = await fetch(`${ENDPOINT}?url=${encodeURIComponent(link.trim())}`, {
       headers: await authHeader(),
       signal: ctrl.signal,
     });
@@ -53,7 +57,7 @@ export async function fetchPreviewImage(imageUrl: string): Promise<Blob | null> 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 8000);
   try {
-    const res = await fetch(`/api/link-preview?image=${encodeURIComponent(imageUrl)}`, {
+    const res = await fetch(`${ENDPOINT}?image=${encodeURIComponent(imageUrl)}`, {
       headers: await authHeader(),
       signal: ctrl.signal,
     });

@@ -14,7 +14,8 @@ export function SignIn() {
     setState('sending');
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
-      options: { emailRedirectTo: window.location.origin },
+      // Come back to the app's own address, e.g. https://gon3tom-32.github.io/Gift-List/
+      options: { emailRedirectTo: window.location.origin + import.meta.env.BASE_URL },
     });
     if (error) {
       setError(errorText(error));

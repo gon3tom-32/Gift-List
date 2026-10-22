@@ -6,7 +6,8 @@ A playful, shared Christmas gift list and budget app for a couple. Both partners
 
 - Frontend: Vite + React + TypeScript
 - Backend: Supabase (Postgres, Auth via email magic link, Storage, Realtime)
-- Hosting: Vercel, deployed from the GitHub repo `Gift-List`
+- Hosting: GitHub Pages at https://gon3tom-32.github.io/Gift-List/, deployed by `.github/workflows/deploy.yml` on every push to `main` (a connected Vercel project also builds it, served from `/`)
+- Server code: Supabase Edge Functions (`supabase/functions/`), e.g. link previews
 - Schema lives in `supabase/schema.sql`. Change the database only through new migration files (`supabase/migrations/`) or SQL reviewed in plan mode, then update `schema.sql` to match.
 
 ## Core concepts
@@ -29,7 +30,7 @@ A playful, shared Christmas gift list and budget app for a couple. Both partners
 
 - Row Level Security is ON for every table. Every policy uses `is_household_member(household_id)`.
 - Only the Supabase anon key goes in the frontend. Never add the service role key to the client or to git.
-- `.env.local` is in `.gitignore`. Environment variables are set in Vercel.
+- `.env.local` is in `.gitignore`. The public Supabase URL and publishable key for production live in the deploy workflow.
 - Photos are in a private Storage bucket, `gift-photos`. Store paths in the database and create signed URLs at display time. The first folder in each path is the household ID.
 - Never use `localStorage` or `sessionStorage` for list data. All data lives in Supabase.
 - Keep `supabase/tests/rls_test.sql` passing (`npm run test:db`), and extend it for any new table.
@@ -38,7 +39,7 @@ A playful, shared Christmas gift list and budget app for a couple. Both partners
 
 - Photos are optional but encouraged. Ideas save without them and show a friendly "add a picture" prompt.
 - Resize images on the client before upload (max 1200px wide, JPEG/WebP).
-- When a link is pasted, try to fetch the page title and image (`api/link-preview.ts`). If that fails, let the user type the name. Never block saving on link metadata.
+- When a link is pasted, try to fetch the page title and image (`supabase/functions/link-preview`). If that fails, let the user type the name. Never block saving on link metadata.
 
 ## Design
 

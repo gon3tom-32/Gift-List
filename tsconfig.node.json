@@ -8,8 +8,9 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "types": ["node"],
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo"
   },
-  "include": ["vite.config.ts", "api"]
+  "include": ["vite.config.ts", "supabase/functions"]
 }
