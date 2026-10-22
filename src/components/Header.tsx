@@ -2,6 +2,7 @@ import { countdownText, daysUntilChristmas } from '../lib/christmas';
 import { formatCents, leftToSpend, type Totals } from '../lib/money';
 import type { Household } from '../lib/types';
 import { Icon } from './Icon';
+import { Avatar } from './Avatar';
 
 export function Header({
   household,
@@ -19,7 +20,22 @@ export function Header({
   return (
     <header className="app-header">
       <div className="header-top">
-        <div>
+        <button
+          type="button"
+          className={`header-photo${household.photo_path ? '' : ' empty'}`}
+          onClick={onSettings}
+          aria-label={household.photo_path ? 'Change our photo' : 'Add our photo'}
+        >
+          {household.photo_path ? (
+            <Avatar name={household.name} photoPath={household.photo_path} size={56} />
+          ) : (
+            <>
+              <Icon name="camera" size={20} />
+              <span>Photo</span>
+            </>
+          )}
+        </button>
+        <div className="header-text">
           <h1 className="display title">{household.name}</h1>
           <p className="countdown">
             <span className="countdown-days" aria-hidden="true">

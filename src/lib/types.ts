@@ -9,6 +9,7 @@ export interface Household {
   id: string;
   name: string;
   budget: Cents;
+  photo_path: string | null;
 }
 
 export interface Member {
@@ -82,6 +83,7 @@ export const fromDb = {
     id: r.id as string,
     name: r.name as string,
     budget: toCents(r.budget as string) ?? 0,
+    photo_path: (r.photo_path as string | null) ?? null,
   }),
   group: (r: Row): Group => ({ ...(r as unknown as Group), budget: toCents(r.budget as string) }),
   person: (r: Row): Person => ({ ...(r as unknown as Person), budget: toCents(r.budget as string) }),

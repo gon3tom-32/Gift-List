@@ -104,7 +104,7 @@ export function useHouseholdData(householdId: string) {
   const load = useCallback(async () => {
     try {
       const [h, m, inv, g, p, gifts] = await Promise.all([
-        supabase.from('households').select('id, name, budget').eq('id', householdId).single(),
+        supabase.from('households').select('id, name, budget, photo_path').eq('id', householdId).single(),
         supabase
           .from('household_members')
           .select('user_id, role, email, display_name')
@@ -212,9 +212,9 @@ export function useHouseholdData(householdId: string) {
     () => ({
       reload: load,
 
-      async updateHousehold(patch: { name?: string; budget?: Cents }) {
+      async updateHousehold(patch: { name?: string; budget?: Cents; photo_path?: string | null }) {
         const row = check(
-          await supabase.from('households').update(toDb(patch)).eq('id', householdId).select('id, name, budget').single(),
+          await supabase.from('households').update(toDb(patch)).eq('id', householdId).select('id, name, budget, photo_path').single(),
         );
         setState((s) => ({ ...s, household: fromDb.household(row) }));
       },

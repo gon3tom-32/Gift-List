@@ -602,6 +602,39 @@ details.more[open] summary {
   max-width: 960px;
   margin: 0 auto;
 }
+.header-text {
+  flex: 1;
+  min-width: 0;
+}
+/* The couple photo beside the list title */
+.header-photo {
+  flex: none;
+  width: 62px;
+  height: 62px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.header-photo .avatar {
+  box-shadow: 0 0 0 3px #fff, 0 4px 12px rgb(0 0 0 / 0.25);
+}
+.header-photo.empty {
+  border: 2px dashed rgb(255 255 255 / 0.7);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  gap: 0;
+  align-content: center;
+  background: rgb(255 255 255 / 0.12);
+}
+.header-photo:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
 .title {
   font-size: 1.6rem;
 }

@@ -58,7 +58,7 @@ export async function resizeImage(file: Blob): Promise<{ blob: Blob; ext: 'webp'
 /** Resizes and uploads a photo. Returns the storage path to save on the row. */
 export async function uploadPhoto(
   householdId: string,
-  kind: 'gifts' | 'people',
+  kind: 'gifts' | 'people' | 'household',
   id: string,
   file: Blob,
 ): Promise<string> {
