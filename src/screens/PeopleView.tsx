@@ -28,10 +28,12 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
   );
 
   const giftStats = useMemo(() => {
-    const m = new Map<string, { count: number; open: number }>();
+    const m = new Map<string, { count: number; open: number; ideas: number; purchased: number }>();
     for (const g of data.gifts) {
-      const s = m.get(g.person_id) ?? { count: 0, open: 0 };
+      const s = m.get(g.person_id) ?? { count: 0, open: 0, ideas: 0, purchased: 0 };
       s.count++;
+      if (g.status === 'idea') s.ideas++;
+      else s.purchased++;
       if (isOpen(g.status)) s.open++;
       m.set(g.person_id, s);
     }
@@ -86,14 +88,14 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
         const loose = people.filter((p) => !p.family_id || !familyIds.has(p.family_id));
         const totals = tools.totalsByGroup.get(group.id) ?? { spent: 0, planned: 0 };
         const renderPerson = (p: Person) => {
-          const stats = giftStats.get(p.id) ?? { count: 0, open: 0 };
+          const stats = giftStats.get(p.id) ?? { count: 0, open: 0, ideas: 0, purchased: 0 };
           const t = tools.totalsByPerson.get(p.id) ?? { spent: 0, planned: 0 };
           return (
             <PersonCard
               key={p.id}
               person={p}
-              giftCount={stats.count}
-              openCount={stats.open}
+              ideas={stats.ideas}
+              purchased={stats.purchased}
               total={t.spent + t.planned}
               onOpen={() => (window.location.hash = routeHref({ name: 'person', id: p.id }))}
             />
