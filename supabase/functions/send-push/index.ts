@@ -90,6 +90,8 @@ Deno.serve(async (req) => {
   if (missing.length > 0) {
     return reply({ error: `Notifications are not set up on the server yet. Missing: ${missing.join(', ')}.` }, 500);
   }
+  // A real public key is 87 characters and a private key 43; lengths only, never the values.
+  const sizes = `public key ${VAPID_PUBLIC.length} characters, private key ${VAPID_PRIVATE.length}`;
 
   try {
     webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
@@ -106,7 +108,8 @@ Deno.serve(async (req) => {
     }
     const delivered = await send(subs, { title: 'Gift-List', body: 'Notifications are working. Ho ho ho!' });
     return reply({ delivered });
-  } catch {
-    return reply({ error: 'Could not send that right now.' }, 500);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message.slice(0, 120) : 'unknown';
+    return reply({ error: `Could not send that right now (${reason}; ${sizes}).` }, 500);
   }
 });
