@@ -112,14 +112,23 @@ export function PersonCard({
   onOpen: () => void;
 }) {
   return (
-    <button type="button" className="person-card" data-person-id={person.id} onClick={onOpen}>
+    <button
+      type="button"
+      className={`person-card${giftCount === 0 ? ' needs-idea' : ''}`}
+      data-person-id={person.id}
+      onClick={onOpen}
+    >
       <Avatar name={person.name} photoPath={person.photo_path} size={52} />
       <span className="person-name">{person.name}</span>
-      <span className="small muted">
-        {giftCount === 0
-          ? 'No ideas yet'
-          : `${giftCount} gift${giftCount === 1 ? '' : 's'}${openCount ? ` · ${openCount} open` : ' · all given'}`}
-      </span>
+      {giftCount === 0 ? (
+        <span className="needs-idea-tag">
+          <Icon name="sparkle" size={14} /> Needs an idea
+        </span>
+      ) : (
+        <span className="small muted">
+          {`${giftCount} gift${giftCount === 1 ? '' : 's'}${openCount ? ` · ${openCount} open` : ' · all given'}`}
+        </span>
+      )}
       {total > 0 && <span className="small person-total">{formatCents(total, { whole: true })}</span>}
       {person.budget !== null && total > person.budget && <span className="small over">Over budget</span>}
     </button>

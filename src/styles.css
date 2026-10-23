@@ -826,6 +826,48 @@ details.more[open] summary {
 .person-card:active {
   transform: scale(0.98);
 }
+/* Someone with no gift ideas yet stands out at a glance. */
+.person-card.needs-idea {
+  background: #fff8e1;
+  border: 2px dashed #e0a100;
+}
+.person-card.needs-idea:hover {
+  border-color: #b07d00;
+}
+.needs-idea-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #fde68a;
+  color: #6b4200;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+@media (prefers-color-scheme: dark) {
+  .person-card.needs-idea {
+    background: #3a2d0c;
+    border-color: #d9a21b;
+  }
+  .person-card.needs-idea:hover {
+    border-color: #f0c04a;
+  }
+  .needs-idea-tag {
+    background: #5a4210;
+    color: #fde68a;
+  }
+}
+.family .person-card.needs-idea {
+  background: #fff8e1;
+}
+@media (prefers-color-scheme: dark) {
+  .family .person-card.needs-idea {
+    background: #3a2d0c;
+  }
+}
+
 /* A quick highlight on the card you just came back from. */
 .person-card.returned-to {
   animation: returned-to 1.5s ease-out;
