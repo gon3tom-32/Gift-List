@@ -764,8 +764,20 @@ details.more[open] summary {
 }
 .group-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px 10px;
+}
+.group-head .family-title {
+  flex: 1 1 140px;
+}
+/* + Person, + Family and edit: next to the name when there's room,
+   otherwise on their own row underneath, lined up on the right. */
+.group-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
 }
 .group-head h2 {
   flex: 1;

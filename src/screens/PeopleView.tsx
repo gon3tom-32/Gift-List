@@ -114,21 +114,32 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
                   {families.length > 0 && ` · ${families.length} ${families.length === 1 ? 'family' : 'families'}`}
                 </p>
               </div>
-              <button
-                type="button"
-                className="btn tiny"
-                onClick={() => tools.openSheet({ kind: 'family', groupId: group.id })}
-              >
-                <Icon name="plus" size={14} /> Family
-              </button>
-              <button
-                type="button"
-                className="icon-btn"
-                onClick={() => tools.openSheet({ kind: 'group', id: group.id })}
-                aria-label={`Edit ${group.name}`}
-              >
-                <Icon name="edit" size={18} />
-              </button>
+              <div className="group-actions">
+                <button
+                  type="button"
+                  className="btn tiny"
+                  onClick={() => tools.openSheet({ kind: 'person', groupId: group.id })}
+                  aria-label={`Add person to ${group.name}`}
+                >
+                  <Icon name="plus" size={14} /> Person
+                </button>
+                <button
+                  type="button"
+                  className="btn tiny"
+                  onClick={() => tools.openSheet({ kind: 'family', groupId: group.id })}
+                  aria-label={`Add family to ${group.name}`}
+                >
+                  <Icon name="plus" size={14} /> Family
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={() => tools.openSheet({ kind: 'group', id: group.id })}
+                  aria-label={`Edit ${group.name}`}
+                >
+                  <Icon name="edit" size={18} />
+                </button>
+              </div>
             </div>
             <BudgetBar budget={group.budget} totals={totals} label={group.name} />
 
@@ -167,26 +178,29 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
                   {members.length > 0 ? (
                     <div className="people-grid">{members.map(renderPerson)}</div>
                   ) : (
-                    <p className="small muted">No one yet. Use Add person below and pick this family.</p>
+                    <p className="small muted">No one yet. Use + Person above and pick this family.</p>
                   )}
                 </section>
               );
             })}
 
-            <div className="people-grid">
-              {loose.map(renderPerson)}
-              <button
-                type="button"
-                className="person-card add"
-                onClick={() => tools.openSheet({ kind: 'person', groupId: group.id })}
-              >
-                <span className="avatar add-avatar" aria-hidden="true">
-                  <Icon name="plus" />
-                </span>
-                <span className="person-name">Add person</span>
-                <span className="small muted">to {group.name}</span>
-              </button>
-            </div>
+            {loose.length > 0 && <div className="people-grid">{loose.map(renderPerson)}</div>}
+            {people.length === 0 && (
+              // An empty group still gets a big, obvious way to start.
+              <div className="people-grid">
+                <button
+                  type="button"
+                  className="person-card add"
+                  onClick={() => tools.openSheet({ kind: 'person', groupId: group.id })}
+                >
+                  <span className="avatar add-avatar" aria-hidden="true">
+                    <Icon name="plus" />
+                  </span>
+                  <span className="person-name">Add person</span>
+                  <span className="small muted">to {group.name}</span>
+                </button>
+              </div>
+            )}
           </section>
         );
       })}
