@@ -266,6 +266,33 @@ function amazonPrice(html: string): string | null {
   return null;
 }
 
+/** Price from the Product (or its offers) inside JSON-LD script blocks. */
+function jsonLdPrice(html: string): string | null {
+  const blocks = html.match(/<script[^>]+application\/ld\+json[^>]*>[\s\S]*?<\/script>/gi) ?? [];
+  const found: string[] = [];
+  const walk = (node: unknown, inProduct: boolean) => {
+    if (Array.isArray(node)) return node.forEach((n) => walk(n, inProduct));
+    if (!node || typeof node !== 'object') return;
+    const o = node as Record<string, unknown>;
+    const type = JSON.stringify(o['@type'] ?? '');
+    const product = inProduct || /Product/i.test(type);
+    if (product && /Offer/i.test(type) && !notUsd(String(o.priceCurrency ?? ''))) {
+      const v = normalizePrice(String(o.price ?? o.lowPrice ?? ''));
+      if (v) found.push(v);
+    }
+    for (const v of Object.values(o)) walk(v, product);
+  };
+  for (const block of blocks) {
+    try {
+      walk(JSON.parse(block.replace(/^<script[^>]*>|<\/script>$/gi, '')), false);
+    } catch {
+      /* ignore malformed block */
+    }
+    if (found.length) break;
+  }
+  return found[0] ?? null;
+}
+
 export function findPrice(html: string, amazon: boolean): string | null {
   if (!html) return null;
   if (amazon) {
@@ -287,11 +314,20 @@ export function findPrice(html: string, amazon: boolean): string | null {
     const m = normalizePrice(micro);
     if (m) return m;
   }
-  // JSON-LD offers: "price": "49.99" or "lowPrice": 49.99
+  // Shops that embed their own page state (Best Buy): the price you pay now.
+  if (/bestbuy\./i.test(html.slice(0, 200000)) || /"customerPrice"|"currentPrice"/.test(html)) {
+    const state = normalizePrice(/"(?:customerPrice|currentPrice)"\s*:\s*"?(\$?[\d.,]+)"?/.exec(html)?.[1]);
+    if (state) return state;
+  }
+  // JSON-LD: read the Product block's offer, not the first "price" on the page
+  // (that can belong to a related item or a protection plan).
+  const ld = jsonLdPrice(html);
+  if (ld) return ld;
+  // Bare JSON without a script wrapper: fall back to the first offer price.
   const ldCurrency = /"priceCurrency"\s*:\s*"([A-Za-z]{3})"/.exec(html)?.[1];
   if (!notUsd(ldCurrency)) {
-    const ld = normalizePrice(/"(?:price|lowPrice)"\s*:\s*"?(\$?[\d.,]+)"?/.exec(html)?.[1]);
-    if (ld) return ld;
+    const bare = normalizePrice(/"(?:price|lowPrice)"\s*:\s*"?(\$?[\d.,]+)"?/.exec(html)?.[1]);
+    if (bare) return bare;
   }
   return null;
 }
