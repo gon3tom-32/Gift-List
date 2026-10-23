@@ -3,6 +3,7 @@ import { formatCents } from '../lib/money';
 import { NEXT_ACTION, nextStatus, type GiftStatus } from '../lib/status';
 import { memberName, type Gift, type Member, type Person } from '../lib/types';
 import { looksLikeUrl } from '../lib/linkPreview';
+import { hatFor, type Hat } from '../lib/hats';
 import { Avatar } from './Avatar';
 import { GiftPhoto } from './GiftPhoto';
 import { Icon } from './Icon';
@@ -98,6 +99,42 @@ export function GiftCard({
   );
 }
 
+function HatArt({ hat }: { hat: Hat }) {
+  switch (hat) {
+    case 'santa':
+      return (
+        <svg className="hat" width="70" height="44" viewBox="0 0 80 50" aria-hidden="true" focusable="false">
+          <path d="M10 40Q14 8 48 6Q60 6 66 24L70 40Z" fill="#c62d3b" />
+          <rect x="4" y="34" width="72" height="13" rx="6.5" fill="#fff" stroke="#c9d3e3" />
+          <circle cx="62" cy="9" r="7" fill="#fff" stroke="#c9d3e3" />
+        </svg>
+      );
+    case 'snowman':
+      return (
+        <svg className="hat" width="70" height="44" viewBox="0 0 80 50" aria-hidden="true" focusable="false">
+          <rect x="20" y="6" width="40" height="34" rx="3" fill="#1d2433" />
+          <rect x="20" y="26" width="40" height="8" fill="#c62d3b" />
+          <ellipse cx="40" cy="41" rx="34" ry="6" fill="#1d2433" />
+        </svg>
+      );
+    case 'antlers':
+      return (
+        <svg className="hat" width="84" height="46" viewBox="0 0 96 52" fill="none" stroke="#7a4b21" strokeWidth="5" strokeLinecap="round" aria-hidden="true" focusable="false">
+          <path d="M26 48C22 34 18 24 10 10M19 29C12 29 7 25 4 20M22 39C16 39 11 36 8 33" />
+          <path d="M70 48C74 34 78 24 86 10M77 29C84 29 89 25 92 20M74 39C80 39 85 36 88 33" />
+        </svg>
+      );
+    case 'elf':
+      return (
+        <svg className="hat" width="70" height="44" viewBox="0 0 80 50" aria-hidden="true" focusable="false">
+          <path d="M10 40L58 6Q66 18 70 40Z" fill="#2f8f5b" />
+          <rect x="6" y="35" width="68" height="11" rx="5.5" fill="#c62d3b" />
+          <circle cx="58" cy="6" r="5" fill="#f5b301" />
+        </svg>
+      );
+  }
+}
+
 export function PersonCard({
   person,
   ideas,
@@ -112,8 +149,17 @@ export function PersonCard({
   onOpen: () => void;
 }) {
   return (
-    <button type="button" className="person-card" data-person-id={person.id} onClick={onOpen}>
-      <Avatar name={person.name} photoPath={person.photo_path} size={52} />
+    <button
+      type="button"
+      className="person-card"
+      data-person-id={person.id}
+      data-status={ideas > 0 ? (purchased > 0 ? 'mixed' : 'ideas') : purchased > 0 ? 'purchased' : 'empty'}
+      onClick={onOpen}
+    >
+      <span className="avatar-hat">
+        <Avatar name={person.name} photoPath={person.photo_path} size={56} />
+        <HatArt hat={hatFor(person.id)} />
+      </span>
       <span className="person-name">{person.name}</span>
       <span className="person-badges">
         {ideas > 0 && <span className="badge status-idea">{`${ideas} idea${ideas === 1 ? '' : 's'}`}</span>}
