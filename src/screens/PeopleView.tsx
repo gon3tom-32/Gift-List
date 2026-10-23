@@ -164,19 +164,11 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
                       <Icon name="edit" size={16} />
                     </button>
                   </div>
-                  <div className="people-grid">
-                    {members.map(renderPerson)}
-                    <button
-                      type="button"
-                      className="person-card add"
-                      onClick={() => tools.openSheet({ kind: 'person', groupId: group.id, familyId: fam.id })}
-                    >
-                      <span className="avatar add-avatar" aria-hidden="true">
-                        <Icon name="plus" />
-                      </span>
-                      <span className="person-name">Add to family</span>
-                    </button>
-                  </div>
+                  {members.length > 0 ? (
+                    <div className="people-grid">{members.map(renderPerson)}</div>
+                  ) : (
+                    <p className="small muted">No one yet. Use Add person below and pick this family.</p>
+                  )}
                 </section>
               );
             })}
