@@ -6,7 +6,7 @@ import { deletePhoto, uploadPhoto } from '../lib/photos';
 import { fetchLinkPreview, fetchPreviewImage, looksLikeUrl, storeFromUrl } from '../lib/linkPreview';
 import { STATUS_LABELS, type GiftStatus } from '../lib/status';
 import { memberName, type Gift, type GiftEvent } from '../lib/types';
-import type { Cents } from '../lib/money';
+import { toCents, type Cents } from '../lib/money';
 import { Sheet } from '../components/Sheet';
 import { Field, MoneyField, TextField } from '../components/Fields';
 import { StatusStrip } from '../components/StatusStrip';
@@ -154,9 +154,19 @@ export function GiftSheet({
       toast("Couldn't read that page. You can type the details instead.");
       return;
     }
+    const priceCents = toCents(p.price ?? null);
     setForm((f) =>
-      f ? { ...f, store: f.store || p.site || storeFromUrl(f.link) || '', name: f.name || p.title || f.name } : f,
+      f
+        ? {
+            ...f,
+            store: f.store || p.site || storeFromUrl(f.link) || '',
+            name: f.name || p.title || f.name,
+            // Only fills an empty estimate; never touches Paid.
+            estimate: f.estimate ?? priceCents,
+          }
+        : f,
     );
+    if (priceCents !== null && form.estimate === null) toast('Price filled in from the shop. Tap Save changes to keep it.');
     if (p.image && !gift!.photo_path) {
       const blob = await fetchPreviewImage(p.image);
       if (blob) await setPhoto(blob);
