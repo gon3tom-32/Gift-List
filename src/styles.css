@@ -813,7 +813,7 @@ details.more[open] summary {
   background: var(--surface-2);
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 22px 8px 14px;
+  padding: 24px 8px 14px;
   display: grid;
   justify-items: center;
   gap: 4px;
@@ -835,32 +835,6 @@ details.more[open] summary {
 }
 .person-card[data-status='empty']::before {
   --candy: var(--border, #dbe3ef);
-}
-.avatar-hat {
-  position: relative;
-  display: inline-block;
-  margin-top: 26px;
-  line-height: 0;
-}
-.avatar-hat .hat {
-  position: absolute;
-  left: 50%;
-  top: -30px;
-  transform: translateX(-50%) rotate(-7deg);
-  transform-origin: 50% 100%;
-  pointer-events: none;
-}
-.person-card:hover .hat {
-  animation: hat-wiggle 0.5s ease-in-out;
-}
-@keyframes hat-wiggle {
-  25% { transform: translateX(-50%) rotate(-14deg); }
-  75% { transform: translateX(-50%) rotate(0deg); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .person-card:hover .hat {
-    animation: none;
-  }
 }
 .person-card:hover {
   border-color: var(--mint);
