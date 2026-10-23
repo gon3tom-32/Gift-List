@@ -99,6 +99,38 @@ export function sumGifts(gifts: Iterable<MoneyGift>): Totals {
   return { spent, planned };
 }
 
+/**
+ * Splits a whole-cent amount equally. Leftover cents go one each to the first
+ * people, so the shares always add up exactly: 1000 / 3 = [334, 333, 333].
+ */
+export function splitCents(total: Cents, parts: number): Cents[] {
+  if (parts <= 1) return [total];
+  const base = Math.trunc(total / parts);
+  const leftover = total - base * parts;
+  return Array.from({ length: parts }, (_, i) => base + (i < leftover ? 1 : 0));
+}
+
+/**
+ * Spent and planned per person when gifts can be shared. Each gift counts once
+ * overall: its cost is divided between its recipients (main person first).
+ */
+export function personTotals(
+  gifts: Iterable<MoneyGift & { id: string; person_id: string }>,
+  recipientsOf: (g: { id: string; person_id: string }) => string[],
+): Map<string, Totals> {
+  const out = new Map<string, Totals>();
+  for (const g of gifts) {
+    const people = recipientsOf(g);
+    const spent = splitCents(giftSpent(g), people.length);
+    const planned = splitCents(giftPlanned(g), people.length);
+    people.forEach((id, i) => {
+      const t = out.get(id) ?? { spent: 0, planned: 0 };
+      out.set(id, { spent: t.spent + spent[i], planned: t.planned + planned[i] });
+    });
+  }
+  return out;
+}
+
 /** Budget − spent − planned. Negative means over budget. Null when there's no budget. */
 export function leftToSpend(budget: Cents | null, totals: Totals): Cents | null {
   if (budget === null) return null;

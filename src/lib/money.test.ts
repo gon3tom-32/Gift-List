@@ -7,6 +7,8 @@ import {
   giftSpent,
   leftToSpend,
   parseMoneyInput,
+  personTotals,
+  splitCents,
   sumGifts,
   toCents,
   type MoneyGift,
@@ -152,5 +154,57 @@ describe('household totals', () => {
   it('stays exact across many small amounts', () => {
     const many = Array.from({ length: 1000 }, () => gift('ordered', null, toCents(0.1)));
     expect(sumGifts(many).spent).toBe(10000);
+  });
+});
+
+describe('splitCents', () => {
+  it('divides evenly when it can', () => {
+    expect(splitCents(2500, 4)).toEqual([625, 625, 625, 625]);
+  });
+  it('gives leftover cents to the first people so shares add up exactly', () => {
+    expect(splitCents(1000, 3)).toEqual([334, 333, 333]);
+    expect(splitCents(1, 4)).toEqual([1, 0, 0, 0]);
+    expect(splitCents(1000, 3).reduce((a, b) => a + b, 0)).toBe(1000);
+  });
+  it('leaves a single recipient alone', () => {
+    expect(splitCents(999, 1)).toEqual([999]);
+    expect(splitCents(0, 3)).toEqual([0, 0, 0]);
+  });
+});
+
+describe('personTotals with shared gifts', () => {
+  const g = (id: string, person_id: string, status: MoneyGift['status'], estimate: number | null, paid: number | null = null) => ({
+    id,
+    person_id,
+    status,
+    estimate,
+    paid,
+  });
+  const extras: Record<string, string[]> = { soap: ['ben', 'joy', 'lily'] };
+  const recipientsOf = (x: { id: string; person_id: string }) => [x.person_id, ...(extras[x.id] ?? [])];
+
+  it('divides a shared gift between its recipients', () => {
+    const totals = personTotals([g('soap', 'andrew', 'ordered', 2500, 2400)], recipientsOf);
+    expect([...totals.entries()].map(([k, v]) => [k, v.spent])).toEqual([
+      ['andrew', 600],
+      ['ben', 600],
+      ['joy', 600],
+      ['lily', 600],
+    ]);
+  });
+  it('plans an idea the same way', () => {
+    const totals = personTotals([g('soap', 'andrew', 'idea', 1000)], recipientsOf);
+    expect(totals.get('andrew')?.planned).toBe(250);
+    expect(totals.get('lily')?.planned).toBe(250);
+  });
+  it('adds a person\'s own gifts to their share', () => {
+    const totals = personTotals([g('soap', 'andrew', 'ordered', 2500), g('own', 'ben', 'ordered', 1000)], recipientsOf);
+    expect(totals.get('ben')?.spent).toBe(625 + 1000);
+  });
+  it('never changes the household total', () => {
+    const gifts = [g('soap', 'andrew', 'ordered', 1000), g('own', 'ben', 'idea', 333)];
+    const people = personTotals(gifts, recipientsOf);
+    const sum = [...people.values()].reduce((a, t) => ({ spent: a.spent + t.spent, planned: a.planned + t.planned }), { spent: 0, planned: 0 });
+    expect(sum).toEqual(sumGifts(gifts));
   });
 });

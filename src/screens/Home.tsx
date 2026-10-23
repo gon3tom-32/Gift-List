@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } 
 import { useHouseholdData } from '../lib/data';
 import { AppContext, UNDO_MS, type AppContextValue, type ToastAction } from '../lib/context';
 import { routeHref, useRoute } from '../lib/route';
-import { sumGifts, type Totals } from '../lib/money';
+import { personTotals, sumGifts, type Totals } from '../lib/money';
+import { extrasByGift, recipientIds } from '../lib/recipients';
 import { isOpen, shouldCelebrate, statusIndex, type GiftStatus } from '../lib/status';
 import { errorText } from '../lib/supabase';
 import type { Gift } from '../lib/types';
@@ -60,21 +61,23 @@ export function Home({ householdId, me }: { householdId: string; me: string }) {
   const totals = useMemo(() => sumGifts(data.gifts), [data.gifts]);
   const openCount = useMemo(() => data.gifts.filter((g) => isOpen(g.status)).length, [data.gifts]);
 
+  // A gift shared between people counts once overall; each person carries their share.
   const totalsByPerson = useMemo(() => {
-    const byPerson = new Map<string, Gift[]>();
-    for (const g of data.gifts) byPerson.set(g.person_id, [...(byPerson.get(g.person_id) ?? []), g]);
-    return new Map([...byPerson].map(([id, gifts]) => [id, sumGifts(gifts)]));
-  }, [data.gifts]);
+    const extras = extrasByGift(data.recipients);
+    return personTotals(data.gifts, (g) => recipientIds(g, extras));
+  }, [data.gifts, data.recipients]);
 
   const totalsByGroup = useMemo(() => {
     const groupOf = new Map(data.people.map((p) => [p.id, p.group_id]));
-    const byGroup = new Map<string, Gift[]>();
-    for (const g of data.gifts) {
-      const gid = groupOf.get(g.person_id);
-      if (gid) byGroup.set(gid, [...(byGroup.get(gid) ?? []), g]);
+    const byGroup = new Map<string, Totals>();
+    for (const [personId, t] of totalsByPerson) {
+      const gid = groupOf.get(personId);
+      if (!gid) continue;
+      const cur = byGroup.get(gid) ?? { spent: 0, planned: 0 };
+      byGroup.set(gid, { spent: cur.spent + t.spent, planned: cur.planned + t.planned });
     }
-    return new Map([...byGroup].map(([id, gifts]) => [id, sumGifts(gifts)]));
-  }, [data.gifts, data.people]);
+    return byGroup;
+  }, [totalsByPerson, data.people]);
 
   // "New" is measured against when I last looked at the start of this visit.
   // The stamp moves forward when I leave, so markers last for the whole visit.
