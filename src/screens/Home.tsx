@@ -158,6 +158,7 @@ export function Home({ householdId, me }: { householdId: string; me: string }) {
         household={data.household}
         totals={totals}
         openCount={openCount}
+        peopleCount={data.people.length}
         onSettings={() => setSheet({ kind: 'settings' })}
       />
 

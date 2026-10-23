@@ -8,11 +8,14 @@ export function Header({
   household,
   totals,
   openCount,
+  peopleCount,
   onSettings,
 }: {
   household: Household;
   totals: Totals;
   openCount: number;
+  /** Everyone on the list, across all groups. */
+  peopleCount: number;
   onSettings: () => void;
 }) {
   const left = leftToSpend(household.budget || null, totals);
@@ -47,6 +50,8 @@ export function Header({
               <strong>
                 {openCount === 0 ? 'Every gift is sorted!' : `${openCount} gift${openCount === 1 ? '' : 's'} still open`}
               </strong>
+              <br />
+              Buying for {peopleCount} {peopleCount === 1 ? 'person' : 'people'}
             </span>
           </p>
         </div>
