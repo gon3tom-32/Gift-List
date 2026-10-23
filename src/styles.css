@@ -764,20 +764,25 @@ details.more[open] summary {
 }
 .group-head {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 8px 10px;
+  gap: 10px;
 }
 .group-head .family-title {
-  flex: 1 1 140px;
+  flex: 1;
+  min-width: 0;
 }
-/* + Person, + Family and edit: next to the name when there's room,
-   otherwise on their own row underneath, lined up on the right. */
+/* Edit sits in the group's top-right corner. */
+.group-edit {
+  align-self: flex-start;
+  margin: -4px -6px 0 0;
+}
+/* + Person and + Family on their own row, lined up with the group name
+   (the icon is 40px wide plus a 10px gap). */
 .group-actions {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
-  margin-left: auto;
+  padding-left: 50px;
 }
 .group-head h2 {
   flex: 1;
