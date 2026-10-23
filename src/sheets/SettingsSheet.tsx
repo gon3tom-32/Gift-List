@@ -21,6 +21,38 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [inviteEmail, setInviteEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [partnerEmail, setPartnerEmail] = useState('');
+  const [partnerPassword, setPartnerPassword] = useState('');
+  const [partnerConfirm, setPartnerConfirm] = useState('');
+  const [partnerMsg, setPartnerMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const isOwner = meMember?.role === 'owner';
+  const hasRoom = data.members.length < 2;
+
+  async function addPartner(e: FormEvent) {
+    e.preventDefault();
+    if (partnerPassword.length < 8) {
+      setPartnerMsg({ ok: false, text: 'Use a password of at least 8 characters.' });
+      return;
+    }
+    if (partnerPassword !== partnerConfirm) {
+      setPartnerMsg({ ok: false, text: "The two passwords don't match." });
+      return;
+    }
+    setBusy(true);
+    setPartnerMsg(null);
+    const email = partnerEmail.trim().toLowerCase();
+    try {
+      await data.addPartner(email, partnerPassword);
+      setPartnerEmail('');
+      setPartnerPassword('');
+      setPartnerConfirm('');
+      setPartnerMsg({ ok: true, text: `Done! ${email} can now sign in with Password using the password you chose.` });
+    } catch (err) {
+      setPartnerMsg({ ok: false, text: errorText(err) });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function setPhoto(file: File | null) {
     setPhotoBusy(true);
@@ -166,21 +198,86 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           ))}
         </ul>
 
-        <form className="stack" onSubmit={invite}>
-          <TextField
-            label="Invite your partner"
-            type="email"
-            inputMode="email"
-            value={inviteEmail}
-            onChange={setInviteEmail}
-            placeholder="partner@example.com"
-            autoComplete="off"
-            hint="They sign in with this email and the list appears for them."
-          />
-          <button className="btn" disabled={busy || !inviteEmail.trim()}>
-            Send invite
-          </button>
-        </form>
+        {partnerMsg?.ok && (
+          <p className="notice" role="status">
+            {partnerMsg.text}
+          </p>
+        )}
+
+        {hasRoom && isOwner && (
+          <form className="stack" onSubmit={addPartner}>
+            <h4 className="h4">Add your partner directly</h4>
+            <p className="muted small">
+              Make their login here: their email and a password you choose. Share the password with them privately; they
+              can change it in Settings after signing in.
+            </p>
+            <TextField
+              label="Partner's email"
+              type="email"
+              inputMode="email"
+              value={partnerEmail}
+              onChange={(v) => {
+                setPartnerEmail(v);
+                setPartnerMsg(null);
+              }}
+              placeholder="partner@example.com"
+              autoComplete="off"
+              required
+            />
+            <TextField
+              label="Their password"
+              type="password"
+              autoComplete="new-password"
+              value={partnerPassword}
+              onChange={(v) => {
+                setPartnerPassword(v);
+                setPartnerMsg(null);
+              }}
+              hint="At least 8 characters."
+              required
+            />
+            <TextField
+              label="Confirm their password"
+              type="password"
+              autoComplete="new-password"
+              value={partnerConfirm}
+              onChange={(v) => {
+                setPartnerConfirm(v);
+                setPartnerMsg(null);
+              }}
+              required
+            />
+            {partnerMsg && !partnerMsg.ok && (
+              <p className="error" role="alert">
+                {partnerMsg.text}
+              </p>
+            )}
+            <button className="btn primary" disabled={busy || !partnerEmail.trim() || !partnerPassword || !partnerConfirm}>
+              {busy ? 'Adding…' : 'Add partner'}
+            </button>
+          </form>
+        )}
+
+        {hasRoom && (
+          <details className="more">
+            <summary>{isOwner ? 'Or invite them by email instead' : 'Invite by email'}</summary>
+            <form className="stack" onSubmit={invite}>
+              <TextField
+                label="Invite your partner"
+                type="email"
+                inputMode="email"
+                value={inviteEmail}
+                onChange={setInviteEmail}
+                placeholder="partner@example.com"
+                autoComplete="off"
+                hint="They sign in with this email and the list appears for them."
+              />
+              <button className="btn" disabled={busy || !inviteEmail.trim()}>
+                Send invite
+              </button>
+            </form>
+          </details>
+        )}
       </section>
 
       <section className="stack section">

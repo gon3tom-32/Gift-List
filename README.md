@@ -31,7 +31,7 @@ One-time setup: in the repo on GitHub, open **Settings → Pages** and set **Sou
 
 ## Using it
 
-- Sign in with your email, create the list, and enter your partner's email. When they sign in with that email, they join automatically. (The app doesn't send them an email itself, so tell them the link.)
+- Sign in with your email and create the list. Then, in ⚙ Settings, the list owner can **Add your partner directly**: enter their email and a password, and they can sign in with **Password** straight away (the `add-partner` Edge Function creates the account). Or invite them by email instead; they join when they sign in with that email.
 - Tap **+** to add an idea. Only the name is needed. Paste a shop link and the app tries to fill in the name and picture.
 - Tap a card to fill in details: price, who's buying, ship-by date, payment method, photo.
 
