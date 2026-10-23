@@ -367,7 +367,34 @@ begin
   end if;
 end $$;
 
+-- "Last looked": a member stamps their own row only
+select mark_seen();
+
+do $$
+begin
+  if (select last_seen_at from household_members where user_id = (select v from t_ids where k = 'bob')) is null then
+    raise exception 'FAIL: mark_seen did not stamp Bob';
+  end if;
+  if (select last_seen_at from household_members where user_id = (select v from t_ids where k = 'alice')) is not null then
+    raise exception 'FAIL: mark_seen stamped Alice''s row';
+  end if;
+end $$;
+
 reset role;
+
+-- Signed-out visitors can't call it
+set local role anon;
+do $$
+declare ok boolean := false;
+begin
+  begin
+    perform mark_seen();
+  exception when others then ok := true;
+  end;
+  if not ok then raise exception 'FAIL: anon could call mark_seen'; end if;
+end $$;
+reset role;
+
 select 'ALL RLS TESTS PASSED' as result;
 
 rollback;

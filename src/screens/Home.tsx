@@ -6,6 +6,8 @@ import { sumGifts, type Totals } from '../lib/money';
 import { isOpen, shouldCelebrate, statusIndex, type GiftStatus } from '../lib/status';
 import { errorText } from '../lib/supabase';
 import type { Gift } from '../lib/types';
+import { isNewFromPartner } from '../lib/newness';
+import { supabase } from '../lib/supabase';
 import { Header } from '../components/Header';
 import { Icon } from '../components/Icon';
 import { GiftCard } from '../components/Cards';
@@ -35,6 +37,7 @@ export interface HomeTools {
   markAdded: (giftId: string) => void;
   totalsByPerson: Map<string, Totals>;
   totalsByGroup: Map<string, Totals>;
+  newGifts: Set<string>;
   renderGift: (g: Gift, opts?: { showPerson?: boolean }) => ReactElement;
 }
 
@@ -72,6 +75,28 @@ export function Home({ householdId, me }: { householdId: string; me: string }) {
     }
     return new Map([...byGroup].map(([id, gifts]) => [id, sumGifts(gifts)]));
   }, [data.gifts, data.people]);
+
+  // "New" is measured against when I last looked at the start of this visit.
+  // The stamp moves forward when I leave, so markers last for the whole visit.
+  const seenAt = useRef<string | null | undefined>(undefined);
+  if (seenAt.current === undefined && !data.loading && data.household) {
+    seenAt.current = data.members.find((m) => m.user_id === me)?.last_seen_at ?? null;
+  }
+  const newGifts = useMemo(
+    () => new Set(data.gifts.filter((g) => isNewFromPartner(g, me, seenAt.current ?? null)).map((g) => g.id)),
+    [data.gifts, me],
+  );
+  useEffect(() => {
+    const stamp = () => {
+      if (document.visibilityState === 'hidden') void supabase.rpc('mark_seen');
+    };
+    document.addEventListener('visibilitychange', stamp);
+    window.addEventListener('pagehide', stamp);
+    return () => {
+      document.removeEventListener('visibilitychange', stamp);
+      window.removeEventListener('pagehide', stamp);
+    };
+  }, []);
 
   const markAdded = useCallback((id: string) => {
     setJustAdded(id);
@@ -117,6 +142,7 @@ export function Home({ householdId, me }: { householdId: string; me: string }) {
     markAdded,
     totalsByPerson,
     totalsByGroup,
+    newGifts,
     renderGift: (g, opts) => (
       <GiftCard
         key={g.id}
@@ -125,6 +151,7 @@ export function Home({ householdId, me }: { householdId: string; me: string }) {
         members={data.members}
         me={me}
         wiggle={justAdded === g.id}
+        isNew={newGifts.has(g.id)}
         onOpen={() => setSheet({ kind: 'gift', id: g.id })}
         onStatus={(to) => void changeStatus(g, to)}
       />

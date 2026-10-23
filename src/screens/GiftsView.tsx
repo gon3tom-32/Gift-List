@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../lib/context';
+import { memberName } from '../lib/types';
 import { isOpen, statusIndex } from '../lib/status';
 import type { Gift } from '../lib/types';
 import type { HomeTools } from './Home';
@@ -32,8 +33,16 @@ export function GiftsView({ tools }: { tools: HomeTools }) {
       });
   }, [data.gifts, filter, mine, me]);
 
+  const partner = data.members.find((m) => m.user_id !== me);
+  const newCount = tools.newGifts.size;
+
   return (
     <div className="gifts-view">
+      {newCount > 0 && (
+        <p className="new-note" role="status">
+          {newCount} new or changed from {partner ? memberName(partner) : 'your partner'} since you last looked
+        </p>
+      )}
       <div className="filters">
         <div className="chip-row" role="group" aria-label="Filter gifts">
           {FILTERS.map((f) => (
