@@ -49,3 +49,74 @@ describe('DNS checks', () => {
     await expect(assertPublicUrl('http://2130706433/')).rejects.toThrow(); // 127.0.0.1 in disguise
   });
 });
+
+import { amazonAsin, isAmazon, parsePreview } from './preview.ts';
+
+describe('Amazon previews', () => {
+  const productUrl = 'https://www.amazon.com/LEGO-Treehouse-Building-Set/dp/B0BBSBJ4YK?ref_=abc&th=1';
+
+  it('spots Amazon links and product codes', () => {
+    expect(isAmazon('https://a.co/d/06Vunw9N')).toBe(true);
+    expect(isAmazon('https://www.amazon.co.uk/dp/B0BBSBJ4YK')).toBe(true);
+    expect(isAmazon('https://notamazon.com/dp/B0BBSBJ4YK')).toBe(false);
+    expect(amazonAsin(productUrl)).toBe('B0BBSBJ4YK');
+    expect(amazonAsin('https://www.amazon.com/gp/product/B07FZ8S74R/ref=x')).toBe('B07FZ8S74R');
+    expect(amazonAsin('https://www.amazon.com/gp/aw/d/B07FZ8S74R')).toBe('B07FZ8S74R');
+    expect(amazonAsin('https://www.amazon.com/s?k=lego')).toBeNull();
+  });
+
+  it('reads the product photo from the page markup and cleans the title', () => {
+    const html = `<html><head><title>Amazon.com: LEGO Ideas Treehouse 21318 : Toys &amp; Games</title>
+      <meta name="title" content="Amazon.com: LEGO Ideas Treehouse 21318 : Toys &amp; Games"></head>
+      <body><img id="landingImage" data-old-hires="https://m.media-amazon.com/images/I/81abc._AC_SL1500_.jpg"
+        data-a-dynamic-image="{&quot;https://m.media-amazon.com/images/I/81abc._AC_SX679_.jpg&quot;:[679,679]}"></body></html>`;
+    expect(parsePreview(html, productUrl)).toEqual({
+      title: 'LEGO Ideas Treehouse 21318',
+      image: 'https://m.media-amazon.com/images/I/81abc._AC_SL1500_.jpg',
+      site: 'Amazon',
+    });
+  });
+
+  it('uses the dynamic image list when there is no hi-res attribute', () => {
+    const html = `<img id="landingImage" data-a-dynamic-image="{&quot;https://m.media-amazon.com/images/I/71x.jpg&quot;:[500,500]}">`;
+    expect(parsePreview(html, productUrl).image).toBe('https://m.media-amazon.com/images/I/71x.jpg');
+  });
+
+  it('falls back to the product code and the link words when Amazon blocks us', () => {
+    const robot = '<html><head><title>Robot Check</title></head><body>Type the characters you see</body></html>';
+    expect(parsePreview(robot, productUrl)).toEqual({
+      title: 'LEGO Treehouse Building Set',
+      image: 'https://images-na.ssl-images-amazon.com/images/P/B0BBSBJ4YK.01.L.jpg',
+      site: 'Amazon',
+    });
+  });
+
+  it('still gives a picture when the page could not be read at all', () => {
+    expect(parsePreview('', 'https://www.amazon.com/dp/B07FZ8S74R').image).toBe(
+      'https://images-na.ssl-images-amazon.com/images/P/B07FZ8S74R.01.L.jpg',
+    );
+  });
+
+  it('keeps other shops working, with image_src and JSON-LD fallbacks', () => {
+    expect(parsePreview('<meta property="og:image" content="/img/a.jpg"><title>Socks</title>', 'https://shop.test/p/1')).toEqual({
+      title: 'Socks',
+      image: 'https://shop.test/img/a.jpg',
+      site: null,
+    });
+    expect(parsePreview('<link rel="image_src" href="https://cdn.test/b.png">', 'https://shop.test/p/2').image).toBe(
+      'https://cdn.test/b.png',
+    );
+    expect(
+      parsePreview('<script type="application/ld+json">{"@type":"Product","image":["https:\\/\\/cdn.test\\/c.jpg"]}</script>', 'https://shop.test/p/3').image,
+    ).toBe('https://cdn.test/c.jpg');
+  });
+});
+
+describe('JSON-LD image shapes', () => {
+  it('reads plain, escaped and object forms', () => {
+    expect(parsePreview('{"image":"https://cdn.test/d.jpg"}', 'https://shop.test/').image).toBe('https://cdn.test/d.jpg');
+    expect(parsePreview('{"image":{"@type":"ImageObject","url":"https://cdn.test/e.jpg"}}', 'https://shop.test/').image).toBe(
+      'https://cdn.test/e.jpg',
+    );
+  });
+});
