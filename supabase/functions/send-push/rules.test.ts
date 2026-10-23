@@ -8,6 +8,7 @@ import {
   daysUntilChristmas,
   isMilestone,
   leftToSpend,
+  shorten,
 } from './rules.ts';
 
 describe('money in whole cents', () => {
@@ -46,11 +47,22 @@ describe('budgetAction', () => {
 describe('activityMessage', () => {
   const base = { actor: 'Sam', giftName: 'Lego', personName: 'Ben', oldStatus: null as string | null, newStatus: 'idea' };
   it('announces a new gift', () => {
-    expect(activityMessage({ ...base, op: 'insert' })?.body).toBe('Sam added Lego for Ben.');
+    expect(activityMessage({ ...base, op: 'insert' })).toEqual({ title: 'Sam added a gift idea', body: 'Lego · for Ben' });
   });
   it('announces status changes', () => {
-    expect(activityMessage({ ...base, op: 'update', oldStatus: 'idea', newStatus: 'ordered' })?.body).toBe('Sam marked Lego for Ben as ordered.');
-    expect(activityMessage({ ...base, op: 'update', oldStatus: 'wrapped', newStatus: 'given' })?.body).toBe('Sam gave Lego for Ben.');
+    expect(activityMessage({ ...base, op: 'update', oldStatus: 'idea', newStatus: 'ordered' })).toEqual({
+      title: 'Sam marked a gift ordered',
+      body: 'Lego · for Ben',
+    });
+    expect(activityMessage({ ...base, op: 'update', oldStatus: 'wrapped', newStatus: 'given' })?.title).toBe('Sam gave a gift');
+  });
+  it('cuts very long shop titles', () => {
+    const long = 'Mini Sax Alto Soprano Saxophone Handmade In USA Black With Case And Many Accessories Included';
+    const body = activityMessage({ ...base, op: 'insert', giftName: long })?.body ?? '';
+    const giftPart = body.split(' · for')[0];
+    expect(giftPart.length).toBeLessThanOrEqual(60);
+    expect(giftPart.endsWith('…')).toBe(true);
+    expect(shorten('Lego')).toBe('Lego');
   });
   it('stays quiet for edits that do not change the status', () => {
     expect(activityMessage({ ...base, op: 'update', oldStatus: 'idea', newStatus: 'idea' })).toBeNull();
@@ -68,8 +80,8 @@ describe('countdown', () => {
   });
   it('says how many gifts are still open', () => {
     const gifts = [{ status: 'idea' }, { status: 'idea' }, { status: 'ordered' }, { status: 'given' }];
-    expect(countdownMessage(10, gifts).body).toBe('10 days to Christmas. 3 gifts still open, 2 still just ideas.');
-    expect(countdownMessage(1, [{ status: 'given' }]).body).toBe('1 day to Christmas. Every gift is given.');
+    expect(countdownMessage(10, gifts)).toEqual({ title: '10 days to Christmas', body: '3 gifts still open, 2 still just ideas.' });
+    expect(countdownMessage(1, [{ status: 'given' }])).toEqual({ title: '1 day to Christmas', body: 'Every gift is given.' });
     expect(countdownMessage(0, gifts).title).toBe('Merry Christmas!');
   });
 });
