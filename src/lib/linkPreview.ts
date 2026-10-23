@@ -11,6 +11,8 @@ export interface LinkPreview {
   title: string | null;
   image: string | null;
   site: string | null;
+  /** Shop price in US dollars, e.g. "89.99", when the page shows one. */
+  price?: string | null;
 }
 
 async function authHeader(): Promise<Record<string, string>> {

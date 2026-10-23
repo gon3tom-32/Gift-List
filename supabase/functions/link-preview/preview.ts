@@ -19,7 +19,7 @@ export function ipVersion(text: string): 0 | 4 | 6 {
 const MAX_HTML_BYTES = 600_000;
 const MAX_IMAGE_BYTES = 5_000_000;
 const TIMEOUT_MS = 5000;
-const MAX_REDIRECTS = 3;
+const MAX_REDIRECTS = 5; // a.co short links hop a few times
 
 export function isPrivateIp(ip: string): boolean {
   if (ipVersion(ip) === 4) {
@@ -66,7 +66,9 @@ export async function safeFetch(raw: string, accept: string): Promise<Response> 
       signal: AbortSignal.timeout(TIMEOUT_MS),
       headers: {
         accept,
-        'user-agent': 'Mozilla/5.0 (compatible; GiftListPreview/1.0)',
+        // A normal phone browser identity: some shops (Amazon) refuse unknown bots.
+        'user-agent':
+          'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1',
         'accept-language': 'en-US,en;q=0.8',
       },
     });
@@ -132,32 +134,203 @@ export interface Preview {
   title: string | null;
   image: string | null;
   site: string | null;
+  /** US dollars as a plain amount, e.g. "89.99". Goes into the gift's estimate. */
+  price: string | null;
 }
 
-const EMPTY: Preview = { title: null, image: null, site: null };
+const EMPTY: Preview = { title: null, image: null, site: null, price: null };
+
+// ---------------------------------------------------------------------------
+// Amazon: product pages have no og:image, and Amazon often answers automated
+// requests with a "robot check" page. Fall back to the product code (ASIN).
+// ---------------------------------------------------------------------------
+
+export function isAmazon(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return /(^|\.)amazon\.[a-z.]+$/.test(host) || host === 'a.co' || host === 'amzn.to' || host === 'amzn.com';
+  } catch {
+    return false;
+  }
+}
+
+/** The 10-character product code from an Amazon product link, if any. */
+export function amazonAsin(url: string): string | null {
+  const m = /\/(?:dp|gp\/product|gp\/aw\/d|exec\/obidos\/asin|o\/ASIN)\/([A-Z0-9]{10})(?=[/?#]|$)/i.exec(url);
+  return m ? m[1].toUpperCase() : null;
+}
+
+/** Amazon's public product-image address for a product code. */
+export function amazonImageForAsin(asin: string): string {
+  return `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.L.jpg`;
+}
+
+/** "Some-Product-Name/dp/B0…" → "Some Product Name". */
+function amazonTitleFromUrl(url: string): string | null {
+  try {
+    const parts = new URL(url).pathname.split('/').filter(Boolean);
+    const i = parts.findIndex((p) => p === 'dp' || p === 'gp');
+    const slug = i > 0 ? parts[i - 1] : null;
+    if (!slug || slug.length < 4) return null;
+    return decodeURIComponent(slug).replace(/[-_]+/g, ' ').trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Finds the main product photo in Amazon's page markup. */
+function amazonImageFromHtml(html: string): string | null {
+  const hires = /data-old-hires=["'](https:\/\/[^"']+)["']/i.exec(html)?.[1];
+  if (hires) return decodeEntities(hires);
+  const dynamic = /data-a-dynamic-image=["']\{\s*(?:&quot;|")(https:\/\/[^"&]+)(?:&quot;|")/i.exec(html)?.[1];
+  if (dynamic) return decodeEntities(dynamic);
+  const hiRes = /"hiRes"\s*:\s*"(https:\/\/[^"]+)"/.exec(html)?.[1];
+  if (hiRes) return hiRes;
+  const large = /"large"\s*:\s*"(https:\/\/[^"]+)"/.exec(html)?.[1];
+  return large ?? null;
+}
+
+/** "Amazon.com: LEGO Treehouse : Toys & Games" → "LEGO Treehouse". */
+function cleanAmazonTitle(title: string): string {
+  return title
+    .replace(/^amazon\.[a-z.]+\s*[:|-]\s*/i, '')
+    .replace(/\s*:\s*[^:]{2,40}$/, '')
+    .trim();
+}
+
+const BLOCKED_TITLE = /^(amazon\.[a-z.]+|robot check|sorry! something went wrong!?|page not found|access denied)$/i;
+
+// ---------------------------------------------------------------------------
+// Generic fallbacks: <link rel="image_src"> and JSON-LD "image".
+// ---------------------------------------------------------------------------
+
+function linkImage(html: string): string | null {
+  const a = /<link[^>]+rel=["']image_src["'][^>]*href=["']([^"']+)["']/i.exec(html)?.[1];
+  const b = /<link[^>]+href=["']([^"']+)["'][^>]*rel=["']image_src["']/i.exec(html)?.[1];
+  return a ?? b ?? null;
+}
+
+function jsonLdImage(html: string): string | null {
+  // "image": "…", "image": ["…"], or "image": {"url": "…"}; links may be written https:\/\/…
+  const m = /"image"\s*:\s*(?:\[\s*)?(?:\{[^}]*?"url"\s*:\s*)?"(https?:(?:\\?\/){2}[^"]+)"/.exec(html);
+  return m ? m[1].replace(/\\\//g, '/') : null;
+}
+
+// ---------------------------------------------------------------------------
+// Price: shops put it in different places. Only US dollars are used.
+// ---------------------------------------------------------------------------
+
+/** "$1,299.99" → "1299.99"; null unless it's a sensible amount. */
+export function normalizePrice(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const text = decodeEntities(String(raw)).replace(/^\s*(?:US)?\$\s*/i, '').replace(/,/g, '').trim();
+  if (!/^\d{1,6}(?:\.\d{1,2})?$/.test(text)) return null;
+  const value = Number(text);
+  if (!(value > 0 && value < 100_000)) return null;
+  return value.toFixed(2);
+}
+
+function notUsd(currency: string | null | undefined): boolean {
+  return Boolean(currency && currency.trim().toUpperCase() !== 'USD');
+}
+
+function amazonPrice(html: string): string | null {
+  const twister = /id=["']twister-plus-price-data-price["'][^>]*value=["']([^"']+)["']/i.exec(html)?.[1];
+  const fromTwister = normalizePrice(twister);
+  if (fromTwister) return fromTwister;
+  const amount = normalizePrice(/"priceAmount"\s*:\s*"?([\d.,]+)"?/.exec(html)?.[1]);
+  if (amount) return amount;
+  // The price you'd pay sits in the core price block (desktop or mobile).
+  for (const marker of ['priceToPay', 'corePrice', 'apex_desktop', 'apex_offerDisplay']) {
+    const at = html.indexOf(marker);
+    if (at === -1) continue;
+    const span = /<span class=["']a-offscreen["']>\s*([^<]+?)\s*<\/span>/i.exec(html.slice(at, at + 4000))?.[1];
+    const found = normalizePrice(span);
+    if (found) return found;
+  }
+  return null;
+}
+
+export function findPrice(html: string, amazon: boolean): string | null {
+  if (!html) return null;
+  if (amazon) {
+    const a = amazonPrice(html);
+    if (a) return a;
+  }
+  // Meta tags (Shopify and many shops)
+  const metaCurrency = metaContent(html, ['product:price:currency', 'og:price:currency']);
+  if (!notUsd(metaCurrency)) {
+    const meta = normalizePrice(metaContent(html, ['product:price:amount', 'og:price:amount']));
+    if (meta) return meta;
+  }
+  // Microdata: itemprop="price" content="…"
+  const micro =
+    /itemprop=["']price["'][^>]*content=["']([^"']+)["']/i.exec(html)?.[1] ??
+    /content=["']([^"']+)["'][^>]*itemprop=["']price["']/i.exec(html)?.[1];
+  const microCurrency = /itemprop=["']priceCurrency["'][^>]*content=["']([^"']+)["']/i.exec(html)?.[1];
+  if (!notUsd(microCurrency)) {
+    const m = normalizePrice(micro);
+    if (m) return m;
+  }
+  // JSON-LD offers: "price": "49.99" or "lowPrice": 49.99
+  const ldCurrency = /"priceCurrency"\s*:\s*"([A-Za-z]{3})"/.exec(html)?.[1];
+  if (!notUsd(ldCurrency)) {
+    const ld = normalizePrice(/"(?:price|lowPrice)"\s*:\s*"?(\$?[\d.,]+)"?/.exec(html)?.[1]);
+    if (ld) return ld;
+  }
+  return null;
+}
+
+function absolute(raw: string | null, base: string): string | null {
+  if (!raw) return null;
+  try {
+    return new URL(raw, base).toString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Turns a fetched page into a preview. `finalUrl` is the address after
+ * redirects (a.co short links end up on amazon.com/dp/…).
+ */
+export function parsePreview(html: string, finalUrl: string): Preview {
+  const titleTag = /<title[^>]*>([^<]{1,300})<\/title>/i.exec(html)?.[1];
+  let title = metaContent(html, ['og:title', 'twitter:title', 'title']) ?? (titleTag ? decodeEntities(titleTag) : null);
+  let image = absolute(
+    metaContent(html, ['og:image:secure_url', 'og:image', 'twitter:image', 'twitter:image:src']) ??
+      linkImage(html) ??
+      jsonLdImage(html),
+    finalUrl,
+  );
+  let site = metaContent(html, ['og:site_name', 'application-name']);
+  const price = findPrice(html, isAmazon(finalUrl));
+
+  if (isAmazon(finalUrl)) {
+    site = 'Amazon';
+    image = image ?? absolute(amazonImageFromHtml(html), finalUrl);
+    const asin = amazonAsin(finalUrl);
+    if (!image && asin) image = amazonImageForAsin(asin);
+    if (title) title = cleanAmazonTitle(title);
+    if (!title || BLOCKED_TITLE.test(title)) title = amazonTitleFromUrl(finalUrl);
+  }
+
+  return { title: title?.slice(0, 200) || null, image, site: site?.slice(0, 80) ?? null, price };
+}
 
 /** Reads a page's title, picture and site name. Never throws. */
 export async function getPreview(pageUrl: string): Promise<Preview> {
   try {
     const res = await safeFetch(pageUrl, 'text/html,application/xhtml+xml');
+    const finalUrl = res.url || pageUrl;
     const type = res.headers.get('content-type') ?? '';
-    if (!res.ok || !type.includes('html')) return EMPTY;
+    // Blocked or not HTML: an Amazon link can still give us its picture.
+    if (!res.ok || !type.includes('html')) return isAmazon(finalUrl) ? parsePreview('', finalUrl) : EMPTY;
     const html = new TextDecoder().decode(await readLimited(res, MAX_HTML_BYTES));
-    const titleTag = /<title[^>]*>([^<]{1,300})<\/title>/i.exec(html)?.[1];
-    const title = metaContent(html, ['og:title', 'twitter:title']) ?? (titleTag ? decodeEntities(titleTag) : null);
-    const rawImage = metaContent(html, ['og:image:secure_url', 'og:image', 'twitter:image', 'twitter:image:src']);
-    let image: string | null = null;
-    if (rawImage) {
-      try {
-        image = new URL(rawImage, res.url || pageUrl).toString();
-      } catch {
-        image = null;
-      }
-    }
-    const site = metaContent(html, ['og:site_name', 'application-name']);
-    return { title: title?.slice(0, 200) ?? null, image, site: site?.slice(0, 80) ?? null };
+    return parsePreview(html, finalUrl);
   } catch {
-    return EMPTY;
+    // Unreachable or timed out: a full Amazon product link still has its code.
+    return isAmazon(pageUrl) ? parsePreview('', pageUrl) : EMPTY;
   }
 }
 
@@ -169,6 +342,7 @@ export async function getImage(imageUrl: string): Promise<{ bytes: Uint8Array; t
     if (!res.ok || !/^image\/(jpeg|png|webp|gif|avif)/.test(type)) return null;
     const bytes = await readLimited(res, MAX_IMAGE_BYTES + 1);
     if (bytes.byteLength > MAX_IMAGE_BYTES) return null;
+    if (bytes.byteLength < 1000) return null; // a 1×1 "no image" placeholder
     return { bytes, type };
   } catch {
     return null;

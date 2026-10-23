@@ -3,7 +3,7 @@ import { useApp } from '../lib/context';
 import { errorText } from '../lib/supabase';
 import { fetchLinkPreview, fetchPreviewImage, looksLikeUrl, storeFromUrl, type LinkPreview } from '../lib/linkPreview';
 import { uploadPhoto } from '../lib/photos';
-import type { Cents } from '../lib/money';
+import { toCents, type Cents } from '../lib/money';
 import type { Gift } from '../lib/types';
 import { Sheet } from '../components/Sheet';
 import { MoneyField, TextField } from '../components/Fields';
@@ -63,6 +63,9 @@ export function QuickAddSheet({
       setLooking(false);
       setPreview(p);
       if (p?.title && !nameTouched.current) setName(p.title);
+      // Fill the estimate from the shop's price, unless one was typed already.
+      const priceCents = toCents(p?.price ?? null);
+      if (priceCents !== null) setEstimate((e) => e ?? priceCents);
     }, 400);
     return () => {
       live = false;
@@ -167,7 +170,17 @@ export function QuickAddSheet({
         <details className="more" open={link || estimate !== null ? true : undefined}>
           <summary>Price and link (optional)</summary>
           <div className="stack">
-            <MoneyField label="Estimate" value={estimate} onChange={setEstimate} onValidChange={setEstimateOk} />
+            <MoneyField
+              label="Estimate"
+              value={estimate}
+              onChange={setEstimate}
+              onValidChange={setEstimateOk}
+              hint={
+                estimate !== null && estimate === toCents(preview?.price ?? null)
+                  ? `Price from ${preview?.site ?? 'the shop'}. Change it if you like.`
+                  : undefined
+              }
+            />
             <TextField
               label="Link"
               type="url"
