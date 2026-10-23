@@ -3,11 +3,12 @@ import { useApp } from '../lib/context';
 import { errorText } from '../lib/supabase';
 import { fetchLinkPreview, fetchPreviewImage, looksLikeUrl, storeFromUrl, type LinkPreview } from '../lib/linkPreview';
 import { uploadPhoto } from '../lib/photos';
-import { toCents, type Cents } from '../lib/money';
+import { formatCents, splitCents, toCents, type Cents } from '../lib/money';
 import type { Gift } from '../lib/types';
 import { Sheet } from '../components/Sheet';
 import { MoneyField, TextField } from '../components/Fields';
 import { NEW_PERSON, PersonPicker } from './PersonPicker';
+import { AlsoFor } from './AlsoFor';
 
 // Remembered for this visit only, so the next idea goes to the same person.
 let lastPersonId: string | undefined;
@@ -34,6 +35,7 @@ export function QuickAddSheet({
   const [name, setName] = useState(initialName ?? '');
   const [personId, setPersonId] = useState(firstPerson ?? data.people[0]?.id ?? NEW_PERSON);
   const [newPerson, setNewPerson] = useState('');
+  const [also, setAlso] = useState<string[]>([]);
   const [groupId, setGroupId] = useState(data.groups[0]?.id ?? '');
   const [estimate, setEstimate] = useState<Cents | null>(null);
   const [estimateOk, setEstimateOk] = useState(true);
@@ -96,6 +98,8 @@ export function QuickAddSheet({
         store: preview?.site ?? (cleanLink ? storeFromUrl(cleanLink) : null),
         estimate,
       });
+      const extras = also.filter((id) => id !== pid);
+      if (extras.length > 0) await data.setGiftRecipients(gift.id, extras);
       onAdded(gift);
 
       // Bring the link's picture in after saving, in the background.
@@ -114,6 +118,11 @@ export function QuickAddSheet({
   }
 
   const needsPerson = personId === NEW_PERSON;
+  const people = 1 + also.filter((id) => id !== personId).length;
+  const shares = estimate !== null && people > 1 ? splitCents(estimate, people) : null;
+  const splitHint = shares
+    ? `Split ${people} ways: ${shares.every((s) => s === shares[0]) ? '' : 'about '}${formatCents(shares[0])} each`
+    : null;
 
   return (
     <Sheet title="New gift idea" onClose={onClose}>
@@ -139,7 +148,17 @@ export function QuickAddSheet({
           inputRef={nameRef}
         />
 
-        {data.people.length > 0 && <PersonPicker value={personId} onChange={setPersonId} allowNew />}
+        {data.people.length > 0 && (
+          <PersonPicker
+            value={personId}
+            onChange={(id) => {
+              setPersonId(id);
+              setAlso((a) => a.filter((x) => x !== id));
+            }}
+            allowNew
+          />
+        )}
+        {data.people.length > 1 && <AlsoFor mainId={personId} selected={also} onChange={setAlso} />}
 
         {needsPerson && (
           <div className="row-fields">
@@ -193,6 +212,8 @@ export function QuickAddSheet({
             />
           </div>
         </details>
+
+        {splitHint && <p className="split-hint small">{splitHint}</p>}
 
         <button className="btn primary big" disabled={saving || !name.trim() || !estimateOk}>
           {saving ? 'Saving…' : 'Save idea'}
