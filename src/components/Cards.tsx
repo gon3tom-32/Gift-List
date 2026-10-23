@@ -100,14 +100,14 @@ export function GiftCard({
 
 export function PersonCard({
   person,
-  giftCount,
-  openCount,
+  ideas,
+  purchased,
   total,
   onOpen,
 }: {
   person: Person;
-  giftCount: number;
-  openCount: number;
+  ideas: number;
+  purchased: number;
   total: number;
   onOpen: () => void;
 }) {
@@ -115,10 +115,10 @@ export function PersonCard({
     <button type="button" className="person-card" data-person-id={person.id} onClick={onOpen}>
       <Avatar name={person.name} photoPath={person.photo_path} size={52} />
       <span className="person-name">{person.name}</span>
-      <span className="small muted">
-        {giftCount === 0
-          ? 'No ideas yet'
-          : `${giftCount} gift${giftCount === 1 ? '' : 's'}${openCount ? ` · ${openCount} open` : ' · all given'}`}
+      <span className="person-badges">
+        {ideas > 0 && <span className="badge status-idea">{`${ideas} idea${ideas === 1 ? '' : 's'}`}</span>}
+        {purchased > 0 && <span className="badge status-given">{`${purchased} purchased`}</span>}
+        {ideas === 0 && purchased === 0 && <span className="badge status-none">Nothing yet</span>}
       </span>
       {total > 0 && <span className="small person-total">{formatCents(total, { whole: true })}</span>}
       {person.budget !== null && total > person.budget && <span className="small over">Over budget</span>}

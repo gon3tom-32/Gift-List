@@ -826,6 +826,19 @@ details.more[open] summary {
 .person-card:active {
   transform: scale(0.98);
 }
+/* Badges inside a person card: ideas, purchased, or nothing yet. */
+.person-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+}
+.status-none {
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1px dashed var(--muted);
+}
+
 /* A quick highlight on the card you just came back from. */
 .person-card.returned-to {
   animation: returned-to 1.5s ease-out;
