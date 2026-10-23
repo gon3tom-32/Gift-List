@@ -45,6 +45,14 @@ with p as (
   returning id
 ) insert into t_ids select 'person', id from p;
 
+-- Families: Grandma joins the "Rose family" in the same group
+with f as (
+  insert into families (household_id, group_id, name)
+  select (select v from t_ids where k = 'home'), (select v from t_ids where k = 'group'), 'Rose family'
+  returning id
+) insert into t_ids select 'family', id from f;
+update people set family_id = (select v from t_ids where k = 'family') where id = (select v from t_ids where k = 'person');
+
 -- created_by is set from the signed-in user, even if the client sends another id
 with x as (
   insert into gifts (household_id, person_id, name, estimate, created_by)
@@ -107,6 +115,7 @@ begin
   if (select count(*) from people)            <> 0 then raise exception 'FAIL: non-member can read people'; end if;
   if (select count(*) from gifts)             <> 0 then raise exception 'FAIL: non-member can read gifts'; end if;
   if (select count(*) from gift_events)       <> 0 then raise exception 'FAIL: non-member can read gift_events'; end if;
+  if (select count(*) from families)          <> 0 then raise exception 'FAIL: non-member can read families'; end if;
   if (select count(*) from storage.objects where bucket_id = 'gift-photos') <> 0 then
     raise exception 'FAIL: non-member can read gift photos';
   end if;
@@ -130,6 +139,18 @@ begin
   if not ok then raise exception 'FAIL: non-member uploaded a household photo'; end if;
 end $$;
 update gifts set name = 'hacked';
+update families set name = 'hacked';
+
+do $$
+declare ok boolean := false;
+begin
+  begin
+    insert into families (household_id, group_id, name)
+    select (select v from t_ids where k = 'home'), (select v from t_ids where k = 'group'), 'Sneaky family';
+  exception when others then ok := true;
+  end;
+  if not ok then raise exception 'FAIL: non-member created a family'; end if;
+end $$;
 delete from gifts;
 delete from people;
 delete from gift_groups;
@@ -213,6 +234,35 @@ begin
   if not ok then raise exception 'FAIL: person linked to a group in another household'; end if;
 end $$;
 
+-- Her household can't make a family in Alice's group
+do $$
+declare ok boolean := false;
+begin
+  begin
+    insert into families (household_id, group_id, name)
+    select (select v from t_ids where k = 'evil_home'), (select v from t_ids where k = 'group'), 'Trojan family';
+  exception when others then ok := true;
+  end;
+  if not ok then raise exception 'FAIL: family linked to a group in another household'; end if;
+end $$;
+
+-- ...and her own person can't join Alice's family
+with g as (
+  insert into gift_groups (household_id, name) select v, 'Evil group' from t_ids where k = 'evil_home' returning id
+) insert into t_ids select 'evil_group', id from g;
+
+do $$
+declare ok boolean := false;
+begin
+  begin
+    insert into people (household_id, group_id, name, family_id)
+    select (select v from t_ids where k = 'evil_home'), (select v from t_ids where k = 'evil_group'), 'Trojan',
+           (select v from t_ids where k = 'family');
+  exception when others then ok := true;
+  end;
+  if not ok then raise exception 'FAIL: person joined a family in another household'; end if;
+end $$;
+
 -- Moving the gift into her household is also impossible: she can't see it
 update gifts set household_id = (select v from t_ids where k = 'evil_home');
 
@@ -266,12 +316,41 @@ begin
   end if;
   if (select budget from households) <> 0          then raise exception 'FAIL: Mallory changed the budget'; end if;
   if (select photo_path from households) is not null then raise exception 'FAIL: Mallory set the household photo'; end if;
+  if (select count(*) from families) <> 1 then raise exception 'FAIL: Bob should see 1 family'; end if;
+  if (select name from families) <> 'Rose family' then raise exception 'FAIL: Mallory renamed the family'; end if;
+  if (select family_id from people) is distinct from (select v from t_ids where k = 'family') then
+    raise exception 'FAIL: Grandma should be in the Rose family';
+  end if;
   if (select count(*) from storage.objects where bucket_id = 'gift-photos') <> 1 then
     raise exception 'FAIL: Bob should see the photo';
   end if;
 end $$;
 
 update gifts set status = 'wrapped', assigned_to = (select v from t_ids where k = 'bob');
+-- Bob adds a second family; a person in another group can't join it
+with f as (
+  insert into families (household_id, group_id, name)
+  select (select v from t_ids where k = 'home'), (select v from t_ids where k = 'group'), 'Kids'
+  returning id
+) insert into t_ids select 'family2', id from f;
+update people set family_id = (select v from t_ids where k = 'family2');
+
+with g as (
+  insert into gift_groups (household_id, name) select v, 'Coworkers' from t_ids where k = 'home' returning id
+) insert into t_ids select 'group2', id from g;
+
+do $$
+declare ok boolean := false;
+begin
+  begin
+    insert into people (household_id, group_id, name, family_id)
+    select (select v from t_ids where k = 'home'), (select v from t_ids where k = 'group2'), 'Priya',
+           (select v from t_ids where k = 'family2');
+  exception when others then ok := true;
+  end;
+  if not ok then raise exception 'FAIL: person joined a family from another group'; end if;
+end $$;
+
 update households set budget = 500.00, photo_path = (select v from t_ids where k = 'home') || '/household/us.webp';
 
 do $$
@@ -279,6 +358,9 @@ begin
   if (select status from gifts) <> 'wrapped' then raise exception 'FAIL: Bob could not update the gift'; end if;
   if (select budget from households) <> 500.00 then raise exception 'FAIL: Bob could not set the budget'; end if;
   if (select photo_path from households) not like '%/household/us.webp' then raise exception 'FAIL: Bob could not set the household photo'; end if;
+  if (select family_id from people where name = 'Grandma') is distinct from (select v from t_ids where k = 'family2') then
+    raise exception 'FAIL: Bob could not move Grandma to another family';
+  end if;
   if not exists (select 1 from gift_events where to_status = 'wrapped'
                  and user_id = (select v from t_ids where k = 'bob')) then
     raise exception 'FAIL: Bob''s status change was not logged as his';

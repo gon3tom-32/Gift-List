@@ -35,10 +35,21 @@ export interface Group {
   created_at: string;
 }
 
+export interface Family {
+  id: string;
+  household_id: string;
+  group_id: string;
+  name: string;
+  sort_order: number;
+  created_at: string;
+}
+
 export interface Person {
   id: string;
   household_id: string;
   group_id: string;
+  /** Optional family inside the person's group. */
+  family_id: string | null;
   name: string;
   budget: Cents | null;
   photo_path: string | null;
@@ -86,7 +97,12 @@ export const fromDb = {
     photo_path: (r.photo_path as string | null) ?? null,
   }),
   group: (r: Row): Group => ({ ...(r as unknown as Group), budget: toCents(r.budget as string) }),
-  person: (r: Row): Person => ({ ...(r as unknown as Person), budget: toCents(r.budget as string) }),
+  person: (r: Row): Person => ({
+    ...(r as unknown as Person),
+    family_id: (r.family_id as string | null) ?? null,
+    budget: toCents(r.budget as string),
+  }),
+  family: (r: Row): Family => r as unknown as Family,
   gift: (r: Row): Gift => ({
     ...(r as unknown as Gift),
     estimate: toCents(r.estimate as string),

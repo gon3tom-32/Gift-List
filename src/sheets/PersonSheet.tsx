@@ -10,19 +10,27 @@ import { Avatar } from '../components/Avatar';
 import { PhotoPicker } from '../components/PhotoPicker';
 import { ConfirmButton } from '../components/ConfirmButton';
 
+const NEW_FAMILY = '__new_family__';
+
 export function PersonSheet({
   personId,
   groupId,
+  familyId,
   onClose,
 }: {
   personId?: string;
   groupId?: string;
+  familyId?: string;
   onClose: () => void;
 }) {
   const { data, toast } = useApp();
   const person = personId ? data.people.find((p) => p.id === personId) : undefined;
   const [name, setName] = useState(person?.name ?? '');
   const [group, setGroup] = useState(person?.group_id ?? groupId ?? data.groups[0]?.id ?? '');
+  // '' = no family, NEW_FAMILY = make one now
+  const [family, setFamily] = useState(person?.family_id ?? familyId ?? '');
+  const [newFamilyName, setNewFamilyName] = useState('');
+  const groupFamilies = data.families.filter((f) => f.group_id === group);
   const [budget, setBudget] = useState<Cents | null>(person?.budget ?? null);
   const [budgetOk, setBudgetOk] = useState(true);
   const [pendingPhoto, setPendingPhoto] = useState<File | null>(null);
@@ -34,12 +42,17 @@ export function PersonSheet({
   async function save(e: FormEvent) {
     e.preventDefault();
     if (!name.trim() || !group || !budgetOk) return;
+    if (family === NEW_FAMILY && !newFamilyName.trim()) return;
     setBusy(true);
     try {
+      let family_id: string | null = family || null;
+      if (family === NEW_FAMILY) {
+        family_id = (await data.addFamily({ name: newFamilyName.trim().slice(0, 60), group_id: group })).id;
+      }
       if (person) {
-        await data.updatePerson(person.id, { name: name.trim().slice(0, 80), group_id: group, budget });
+        await data.updatePerson(person.id, { name: name.trim().slice(0, 80), group_id: group, family_id, budget });
       } else {
-        const created = await data.addPerson({ name: name.trim().slice(0, 80), group_id: group, budget });
+        const created = await data.addPerson({ name: name.trim().slice(0, 80), group_id: group, family_id, budget });
         if (pendingPhoto) {
           try {
             const path = await uploadPhoto(householdId, 'people', created.id, pendingPhoto);
@@ -149,7 +162,16 @@ export function PersonSheet({
         />
         <Field label="Group">
           {(id) => (
-            <select id={id} value={group} onChange={(e) => setGroup(e.target.value)} required>
+            <select
+              id={id}
+              value={group}
+              onChange={(e) => {
+                setGroup(e.target.value);
+                // Families belong to one group, so changing group clears it.
+                setFamily('');
+              }}
+              required
+            >
               {data.groups.map((g) => (
                 <option key={g.id} value={g.id}>
                   {g.name}
@@ -158,6 +180,30 @@ export function PersonSheet({
             </select>
           )}
         </Field>
+        <Field label="Family (optional)" hint="People in a family show together inside the group.">
+          {(id, describedBy) => (
+            <select id={id} value={family} onChange={(e) => setFamily(e.target.value)} aria-describedby={describedBy}>
+              <option value="">No family</option>
+              {groupFamilies.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+              <option value={NEW_FAMILY}>+ New family…</option>
+            </select>
+          )}
+        </Field>
+        {family === NEW_FAMILY && (
+          <TextField
+            label="New family name"
+            value={newFamilyName}
+            onChange={setNewFamilyName}
+            required
+            maxLength={60}
+            autoComplete="off"
+            placeholder="Mike, Sarah & kids"
+          />
+        )}
         <MoneyField
           label="Budget (optional)"
           value={budget}
