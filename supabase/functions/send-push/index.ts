@@ -26,9 +26,11 @@ const reply = (body: unknown, status = 200) =>
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-const VAPID_PUBLIC = Deno.env.get('VAPID_PUBLIC_KEY') ?? '';
-const VAPID_PRIVATE = Deno.env.get('VAPID_PRIVATE_KEY') ?? '';
-const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') ?? 'mailto:gon3tom@gmail.com';
+// Secrets pasted into a dashboard often carry stray spaces or line breaks.
+// The keys are base64 text with no whitespace, so every bit of it can go.
+const VAPID_PUBLIC = (Deno.env.get('VAPID_PUBLIC_KEY') ?? '').replace(/\s+/g, '');
+const VAPID_PRIVATE = (Deno.env.get('VAPID_PRIVATE_KEY') ?? '').replace(/\s+/g, '');
+const VAPID_SUBJECT = (Deno.env.get('VAPID_SUBJECT') ?? '').trim() || 'mailto:gon3tom@gmail.com';
 
 const admin = { apikey: SERVICE_KEY, authorization: `Bearer ${SERVICE_KEY}`, 'content-type': 'application/json' };
 
@@ -80,12 +82,17 @@ async function send(subs: Sub[], payload: { title: string; body: string }): Prom
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   if (req.method !== 'POST') return reply({ error: 'Use POST' }, 405);
-  if (!SUPABASE_URL || !SERVICE_KEY || !VAPID_PUBLIC || !VAPID_PRIVATE) {
-    return reply({ error: 'Notifications are not set up on the server yet.' }, 500);
+  const missing = [
+    !VAPID_PUBLIC && 'VAPID_PUBLIC_KEY',
+    !VAPID_PRIVATE && 'VAPID_PRIVATE_KEY',
+    (!SUPABASE_URL || !SERVICE_KEY) && 'the Supabase keys',
+  ].filter(Boolean);
+  if (missing.length > 0) {
+    return reply({ error: `Notifications are not set up on the server yet. Missing: ${missing.join(', ')}.` }, 500);
   }
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
 
   try {
+    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
     const body = (await req.json().catch(() => ({}))) as { kind?: string };
     if (body.kind !== 'test') return reply({ error: 'Unknown request' }, 400);
 
