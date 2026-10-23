@@ -21,7 +21,7 @@ import { FamilySheet } from '../sheets/FamilySheet';
 import { SettingsSheet } from '../sheets/SettingsSheet';
 
 export type SheetState =
-  | { kind: 'quick'; personId?: string }
+  | { kind: 'quick'; personId?: string; link?: string | null; name?: string | null }
   | { kind: 'gift'; id: string }
   | { kind: 'person'; id?: string; groupId?: string; familyId?: string }
   | { kind: 'group'; id?: string }
@@ -120,6 +120,16 @@ export function Home({ householdId, me }: { householdId: string; me: string }) {
   };
 
   // A person that was deleted (maybe by the partner) sends us back home.
+  // Shared from another app: open quick-add with the link, then tidy the address
+  // so a reload doesn't open it again.
+  const shared = route.name === 'add' && !data.loading && data.household ? route : null;
+  useEffect(() => {
+    if (!shared) return;
+    setSheet({ kind: 'quick', link: shared.url, name: shared.text });
+    window.history.replaceState(null, '', window.location.pathname + window.location.search + '#/');
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  }, [shared]);
+
   const personMissing = route.name === 'person' && !data.loading && !peopleById.has(route.id);
   useEffect(() => {
     if (personMissing) window.location.hash = routeHref({ name: 'people' });
@@ -195,6 +205,8 @@ export function Home({ householdId, me }: { householdId: string; me: string }) {
       {sheet?.kind === 'quick' && (
         <QuickAddSheet
           initialPersonId={sheet.personId}
+          initialLink={sheet.link}
+          initialName={sheet.name}
           onClose={() => setSheet(null)}
           onAdded={(g) => {
             markAdded(g.id);

@@ -15,10 +15,15 @@ let lastPersonId: string | undefined;
 /** Add an idea in a few seconds: only the name is required. */
 export function QuickAddSheet({
   initialPersonId,
+  initialLink,
+  initialName,
   onClose,
   onAdded,
 }: {
   initialPersonId?: string;
+  /** Pre-filled when something is shared into the app. */
+  initialLink?: string | null;
+  initialName?: string | null;
   onClose: () => void;
   onAdded: (g: Gift) => void;
 }) {
@@ -26,17 +31,18 @@ export function QuickAddSheet({
   const householdId = data.household!.id;
   const firstPerson = [initialPersonId, lastPersonId].find((id) => id && data.people.some((p) => p.id === id));
 
-  const [name, setName] = useState('');
+  const [name, setName] = useState(initialName ?? '');
   const [personId, setPersonId] = useState(firstPerson ?? data.people[0]?.id ?? NEW_PERSON);
   const [newPerson, setNewPerson] = useState('');
   const [groupId, setGroupId] = useState(data.groups[0]?.id ?? '');
   const [estimate, setEstimate] = useState<Cents | null>(null);
   const [estimateOk, setEstimateOk] = useState(true);
-  const [link, setLink] = useState('');
+  const [link, setLink] = useState(initialLink ?? '');
   const [preview, setPreview] = useState<LinkPreview | null>(null);
   const [looking, setLooking] = useState(false);
   const [saving, setSaving] = useState(false);
-  const nameTouched = useRef(false);
+  // A shared name hint counts as typed only when there's no link to look up.
+  const nameTouched = useRef(Boolean(initialName && !initialLink));
   const nameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
