@@ -51,7 +51,16 @@ export function budgetMessage(left: number): Message {
   return { title: 'Over budget', body: `You're ${dollars(left)} over your Christmas budget.` };
 }
 
-/** "Sam added Lego for Ben", "Sam marked Lego as ordered"; null for edits that don't matter. */
+/** Long shop titles get cut so the notification stays readable. */
+export function shorten(text: string, max = 60): string {
+  const t = text.trim();
+  return t.length <= max ? t : `${t.slice(0, max - 1).trimEnd()}…`;
+}
+
+/**
+ * Title says who did what; the body names the gift and who it is for:
+ *   "Sam added a gift idea" / "Lego set · for Ben". Null for edits that don't matter.
+ */
 export function activityMessage(a: {
   actor: string;
   op: string;
@@ -60,12 +69,12 @@ export function activityMessage(a: {
   oldStatus: string | null;
   newStatus: string;
 }): Message | null {
-  const forWhom = a.personName ? ` for ${a.personName}` : '';
-  if (a.op === 'insert') return { title: 'New gift idea', body: `${a.actor} added ${a.giftName}${forWhom}.` };
+  const body = a.personName ? `${shorten(a.giftName)} · for ${shorten(a.personName, 30)}` : shorten(a.giftName);
+  if (a.op === 'insert') return { title: `${a.actor} added a gift idea`, body };
   if (a.oldStatus && a.oldStatus !== a.newStatus) {
-    if (a.newStatus === 'given') return { title: 'Gift given', body: `${a.actor} gave ${a.giftName}${forWhom}.` };
-    if (a.newStatus === 'idea') return { title: 'Back to an idea', body: `${a.actor} moved ${a.giftName}${forWhom} back to an idea.` };
-    return { title: 'Gift update', body: `${a.actor} marked ${a.giftName}${forWhom} as ${a.newStatus}.` };
+    if (a.newStatus === 'given') return { title: `${a.actor} gave a gift`, body };
+    if (a.newStatus === 'idea') return { title: `${a.actor} moved a gift back to an idea`, body };
+    return { title: `${a.actor} marked a gift ${a.newStatus}`, body };
   }
   return null;
 }
@@ -90,11 +99,14 @@ export function isMilestone(days: number): boolean {
 export function countdownMessage(days: number, gifts: { status: string }[]): Message {
   const open = gifts.filter((g) => g.status !== 'given').length;
   const ideas = gifts.filter((g) => g.status === 'idea').length;
-  if (days === 0) return { title: 'Merry Christmas!', body: open === 0 ? 'Every gift is given. Ho ho ho!' : `${open} gift${open === 1 ? '' : 's'} still to give. Ho ho ho!` };
-  const lead = days === 1 ? '1 day to Christmas' : `${days} days to Christmas`;
-  const rest =
-    open === 0
-      ? 'every gift is given.'
-      : `${open} gift${open === 1 ? '' : 's'} still open${ideas > 0 ? `, ${ideas} still just ${ideas === 1 ? 'an idea' : 'ideas'}` : ''}.`;
-  return { title: 'Christmas countdown', body: `${lead}. ${rest.charAt(0).toUpperCase()}${rest.slice(1)}` };
+  if (days === 0) {
+    return {
+      title: 'Merry Christmas!',
+      body: open === 0 ? 'Every gift is given. Ho ho ho!' : `${open} gift${open === 1 ? '' : 's'} still to give. Ho ho ho!`,
+    };
+  }
+  const title = days === 1 ? '1 day to Christmas' : `${days} days to Christmas`;
+  if (open === 0) return { title, body: 'Every gift is given.' };
+  const ideaPart = ideas > 0 ? `, ${ideas} still just ${ideas === 1 ? 'an idea' : 'ideas'}` : '';
+  return { title, body: `${open} gift${open === 1 ? '' : 's'} still open${ideaPart}.` };
 }

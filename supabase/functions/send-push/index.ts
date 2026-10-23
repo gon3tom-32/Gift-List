@@ -176,7 +176,7 @@ async function handleTest(req: Request): Promise<Response> {
   const [mine] = await getJson<{ household_id: string }[]>(`household_members?user_id=eq.${me}&select=household_id`);
   const gifts = mine ? await giftsOf(mine.household_id) : [];
   const preview = countdownMessage(daysUntilChristmas(new Date()), gifts);
-  return reply({ delivered: await send(subs, { title: 'Gift-List test', body: preview.body }) });
+  return reply({ delivered: await send(subs, { title: 'Test notification', body: `This is how the countdown looks: ${preview.title}. ${preview.body}` }) });
 }
 
 Deno.serve(async (req) => {
