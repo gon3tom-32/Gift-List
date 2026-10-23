@@ -35,6 +35,7 @@ create table if not exists household_members (
   email        text,
   display_name text check (display_name is null or length(display_name) <= 40),
   joined_at    timestamptz not null default now(),
+  last_seen_at timestamptz,  -- when this member last looked; drives the "new" marker
   primary key (household_id, user_id)
 );
 
@@ -246,6 +247,20 @@ begin
 end;
 $$;
 
+-- Stamps the caller's own membership row with the time they last looked.
+create or replace function mark_seen()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update household_members
+  set last_seen_at = now()
+  where user_id = auth.uid();
+end;
+$$;
+
 -- ---------------------------------------------------------------------------
 -- Triggers: stamp edits and log status changes
 -- ---------------------------------------------------------------------------
@@ -315,10 +330,12 @@ revoke execute on function create_household(text)        from public, anon;
 revoke execute on function invite_partner(uuid, text)    from public, anon;
 revoke execute on function accept_invites()              from public, anon;
 revoke execute on function set_display_name(text)        from public, anon;
+revoke execute on function mark_seen()                   from public, anon;
 grant  execute on function create_household(text)        to authenticated;
 grant  execute on function invite_partner(uuid, text)    to authenticated;
 grant  execute on function accept_invites()              to authenticated;
 grant  execute on function set_display_name(text)        to authenticated;
+grant  execute on function mark_seen()                   to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Row Level Security

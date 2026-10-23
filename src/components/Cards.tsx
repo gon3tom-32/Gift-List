@@ -21,6 +21,7 @@ export function GiftCard({
   members,
   me,
   wiggle,
+  isNew,
   onOpen,
   onStatus,
 }: {
@@ -29,6 +30,7 @@ export function GiftCard({
   members: Member[];
   me: string;
   wiggle?: boolean;
+  isNew?: boolean;
   onOpen: () => void;
   onStatus: (to: GiftStatus) => void;
 }) {
@@ -41,7 +43,10 @@ export function GiftCard({
       <GiftPhoto path={gift.photo_path} alt="" onAdd={gift.photo_path ? undefined : onOpen} />
       <div className="gift-body">
         <div className="gift-top">
-          <StatusBadge status={gift.status} />
+          <span className="gift-badges">
+            <StatusBadge status={gift.status} />
+            {isNew && <span className="badge badge-new">New</span>}
+          </span>
           {price !== null && (
             <span className="price">
               {formatCents(price)}

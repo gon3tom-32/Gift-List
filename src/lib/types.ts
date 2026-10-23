@@ -17,6 +17,7 @@ export interface Member {
   role: 'owner' | 'editor';
   email: string | null;
   display_name: string | null;
+  last_seen_at: string | null;
 }
 
 export interface Invite {

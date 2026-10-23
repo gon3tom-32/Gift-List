@@ -120,7 +120,7 @@ export function useHouseholdData(householdId: string) {
         supabase.from('households').select('id, name, budget, photo_path').eq('id', householdId).single(),
         supabase
           .from('household_members')
-          .select('user_id, role, email, display_name')
+          .select('user_id, role, email, display_name, last_seen_at')
           .eq('household_id', householdId)
           .order('joined_at'),
         supabase
