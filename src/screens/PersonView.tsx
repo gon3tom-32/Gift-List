@@ -3,6 +3,7 @@ import { useApp } from '../lib/context';
 import { routeHref } from '../lib/route';
 import { errorText } from '../lib/supabase';
 import { statusIndex } from '../lib/status';
+import { recipientIds } from '../lib/recipients';
 import { Avatar } from '../components/Avatar';
 import { BudgetBar } from '../components/BudgetBar';
 import { Icon } from '../components/Icon';
@@ -19,9 +20,9 @@ export function PersonView({ personId, tools }: { personId: string; tools: HomeT
   const gifts = useMemo(
     () =>
       data.gifts
-        .filter((g) => g.person_id === personId)
+        .filter((g) => recipientIds(g, tools.extras).includes(personId))
         .sort((a, b) => statusIndex(a.status) - statusIndex(b.status) || b.created_at.localeCompare(a.created_at)),
-    [data.gifts, personId],
+    [data.gifts, personId, tools.extras],
   );
   const totals = tools.totalsByPerson.get(personId) ?? { spent: 0, planned: 0 };
 
@@ -91,7 +92,7 @@ export function PersonView({ personId, tools }: { personId: string; tools: HomeT
       {gifts.length === 0 ? (
         <p className="empty-note muted">No ideas yet. Type one above, it only needs a name.</p>
       ) : (
-        <div className="gift-grid">{gifts.map((g) => tools.renderGift(g))}</div>
+        <div className="gift-grid">{gifts.map((g) => tools.renderGift(g, { forPerson: personId }))}</div>
       )}
     </div>
   );

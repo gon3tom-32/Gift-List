@@ -9,6 +9,7 @@ import { Field, MoneyField, TextField } from '../components/Fields';
 import { Avatar } from '../components/Avatar';
 import { PhotoPicker } from '../components/PhotoPicker';
 import { ConfirmButton } from '../components/ConfirmButton';
+import { extrasByGift, giftsLostWith } from '../lib/recipients';
 
 const NEW_FAMILY = '__new_family__';
 
@@ -37,7 +38,10 @@ export function PersonSheet({
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const householdId = data.household!.id;
-  const giftCount = person ? data.gifts.filter((g) => g.person_id === person.id).length : 0;
+  const extras = extrasByGift(data.recipients);
+  // Gifts shared with someone else survive; only the ones that are theirs alone go.
+  const lostGifts = person ? giftsLostWith(data.gifts, extras, new Set([person.id])) : [];
+  const giftCount = lostGifts.length;
 
   async function save(e: FormEvent) {
     e.preventDefault();
@@ -105,7 +109,7 @@ export function PersonSheet({
   async function remove() {
     if (!person) return;
     try {
-      const paths = [person.photo_path, ...data.gifts.filter((g) => g.person_id === person.id).map((g) => g.photo_path)];
+      const paths = [person.photo_path, ...lostGifts.map((g) => g.photo_path)];
       await data.deletePerson(person.id);
       paths.forEach((p) => void deletePhoto(p));
       window.location.hash = routeHref({ name: 'people' });

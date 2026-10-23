@@ -7,7 +7,7 @@ import { deletePhoto, uploadPhoto } from '../lib/photos';
 import { fetchLinkPreview, fetchPreviewImage, looksLikeUrl, storeFromUrl } from '../lib/linkPreview';
 import { STATUS_LABELS, type GiftStatus } from '../lib/status';
 import { memberName, type Gift, type GiftEvent } from '../lib/types';
-import { toCents, type Cents } from '../lib/money';
+import { formatCents, splitCents, toCents, type Cents } from '../lib/money';
 import { Sheet } from '../components/Sheet';
 import { Field, MoneyField, TextField } from '../components/Fields';
 import { StatusStrip } from '../components/StatusStrip';
@@ -15,6 +15,7 @@ import { GiftPhoto } from '../components/GiftPhoto';
 import { PhotoPicker } from '../components/PhotoPicker';
 import { ConfirmButton } from '../components/ConfirmButton';
 import { PersonPicker } from './PersonPicker';
+import { AlsoFor } from './AlsoFor';
 
 const PAYMENT_METHODS = ['Credit card', 'Debit card', 'Cash', 'Gift card', 'PayPal', 'Venmo', 'Apple Pay'];
 const SHARED = '__shared__';
@@ -22,6 +23,7 @@ const SHARED = '__shared__';
 interface Form {
   name: string;
   person_id: string;
+  also: string[]; // extra people it is shared with
   store: string;
   link: string;
   estimate: Cents | null;
@@ -31,10 +33,11 @@ interface Form {
   payment_method: string;
 }
 
-function toForm(g: Gift): Form {
+function toForm(g: Gift, also: string[]): Form {
   return {
     name: g.name,
     person_id: g.person_id,
+    also,
     store: g.store ?? '',
     link: g.link ?? '',
     estimate: g.estimate,
@@ -58,7 +61,11 @@ export function GiftSheet({
 }) {
   const { data, me, toast } = useApp();
   const gift = data.gifts.find((g) => g.id === giftId);
-  const [form, setForm] = useState<Form | null>(gift ? toForm(gift) : null);
+  const savedAlso = useMemo(
+    () => data.recipients.filter((r) => r.gift_id === giftId).map((r) => r.person_id).sort(),
+    [data.recipients, giftId],
+  );
+  const [form, setForm] = useState<Form | null>(gift ? toForm(gift, savedAlso) : null);
   const [moneyOk, setMoneyOk] = useState({ estimate: true, paid: true });
   const [saving, setSaving] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -88,11 +95,18 @@ export function GiftSheet({
 
   const dirty = useMemo(() => {
     if (!gift || !form) return false;
-    return JSON.stringify(toForm(gift)) !== JSON.stringify(form);
-  }, [gift, form]);
+    return JSON.stringify(toForm(gift, savedAlso)) !== JSON.stringify({ ...form, also: [...form.also].sort() });
+  }, [gift, form, savedAlso]);
 
   if (!gift || !form) return null;
   const householdId = data.household!.id;
+
+  const people = 1 + form.also.filter((id) => id !== form.person_id).length;
+  const price = form.paid ?? form.estimate;
+  const shares = price !== null && people > 1 ? splitCents(price, people) : null;
+  const splitHint = shares
+    ? `Split ${people} ways: ${shares.every((s) => s === shares[0]) ? '' : 'about '}${formatCents(shares[0])} each`
+    : null;
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm((f) => (f ? { ...f, [key]: value } : f));
 
@@ -113,6 +127,10 @@ export function GiftSheet({
         ship_by: form.ship_by || null,
         payment_method: form.payment_method.trim() || null,
       });
+      await data.setGiftRecipients(
+        giftId,
+        form.also.filter((id) => id !== form.person_id),
+      );
       toast('Saved.');
       onClose();
     } catch (err) {
@@ -252,7 +270,11 @@ export function GiftSheet({
 
       <form id="gift-form" className="stack" onSubmit={save}>
         <TextField label="Gift" value={form.name} onChange={(v) => set('name', v)} required maxLength={200} />
-        <PersonPicker value={form.person_id} onChange={(v) => set('person_id', v)} />
+        <PersonPicker
+          value={form.person_id}
+          onChange={(v) => setForm((f) => (f ? { ...f, person_id: v, also: f.also.filter((id) => id !== v) } : f))}
+        />
+        <AlsoFor mainId={form.person_id} selected={form.also} onChange={(ids) => set('also', ids)} />
 
         <div className="row-fields">
           <MoneyField
@@ -269,6 +291,7 @@ export function GiftSheet({
             hint={gift.status === 'idea' ? 'Counts once ordered' : undefined}
           />
         </div>
+        {splitHint && <p className="split-hint small">{splitHint}</p>}
 
         <Field label="Link">
           {(id) => (

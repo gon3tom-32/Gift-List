@@ -8,6 +8,7 @@ import { Sheet } from '../components/Sheet';
 import { MoneyField, TextField } from '../components/Fields';
 import { Icon } from '../components/Icon';
 import { ConfirmButton } from '../components/ConfirmButton';
+import { extrasByGift, giftsLostWith } from '../lib/recipients';
 
 const ICON_LABELS: Record<GroupIcon, string> = {
   gift: 'Gift box',
@@ -50,7 +51,7 @@ export function GroupSheet({ groupId, onClose }: { groupId?: string; onClose: ()
       const ids = new Set(people.map((p) => p.id));
       const paths = [
         ...people.map((p) => p.photo_path),
-        ...data.gifts.filter((g) => ids.has(g.person_id)).map((g) => g.photo_path),
+        ...giftsLostWith(data.gifts, extrasByGift(data.recipients), ids).map((g) => g.photo_path),
       ];
       await data.deleteGroup(group.id);
       paths.forEach((p) => void deletePhoto(p));
