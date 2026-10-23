@@ -195,3 +195,14 @@ describe("Amazon's phone layout", () => {
     expect(parsePreview(page, url).image).toBe('https://m.media-amazon.com/images/I/41zz._AC_SL1000_.jpg');
   });
 });
+
+describe('findPrice: Best Buy style pages', () => {
+  it('uses the Product offer, not an earlier unrelated price', () => {
+    const html = `<script>{"plan":{"price":5.99}}</script>
+      <script type="application/ld+json">{"@type":"Product","offers":{"@type":"Offer","priceCurrency":"USD","price":9.99}}</script>`;
+    expect(findPrice(html, false)).toBe('9.99');
+  });
+  it('prefers the current price in embedded page state', () => {
+    expect(findPrice('<script>{"price":5.99,"currentPrice":9.99}</script>', false)).toBe('9.99');
+  });
+});
