@@ -62,3 +62,4 @@ A playful, shared Christmas gift list and budget app for a couple. Both partners
 ## Out of scope for now
 
 - Gift-exchange games, reminders by text, store integrations, and multi-household sharing.
+- Text-message reminders are out. Web push notifications (partner activity, budget, countdown) are in scope; keys and the send secret live only in Supabase function secrets.

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useApp } from '../lib/context';
 import { errorText, supabase } from '../lib/supabase';
 import { memberName } from '../lib/types';
@@ -8,6 +8,7 @@ import { MoneyField, TextField } from '../components/Fields';
 import { Avatar } from '../components/Avatar';
 import { PhotoPicker } from '../components/PhotoPicker';
 import { deletePhoto, uploadPhoto } from '../lib/photos';
+import { disablePush, enablePush, pushState, sendTestPush, type PushState } from '../lib/push';
 
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const { data, me, toast } = useApp();
@@ -320,6 +321,8 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         </form>
       </section>
 
+      <NotificationsSection householdId={household.id} userId={me} />
+
       <ShareShortcutHelp />
 
       <section className="section">
@@ -328,6 +331,72 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         </button>
       </section>
     </Sheet>
+  );
+}
+
+/** Turns push notifications on or off for this phone. */
+function NotificationsSection({ householdId, userId }: { householdId: string; userId: string }) {
+  const { toast } = useApp();
+  const [state, setState] = useState<PushState | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    void pushState().then(setState);
+  }, []);
+
+  async function toggle() {
+    setBusy(true);
+    try {
+      if (state === 'on') await disablePush();
+      else await enablePush(householdId, userId);
+      setState(await pushState());
+    } catch (err) {
+      toast(errorText(err));
+      setState(await pushState());
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function test() {
+    setBusy(true);
+    try {
+      await sendTestPush();
+      toast('Sent. It should show up in a moment.');
+    } catch (err) {
+      toast(errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="stack section">
+      <h3 className="h4">Notifications</h3>
+      {state === 'needs-install' && (
+        <p className="muted small">
+          On iPhone, notifications only work from the Gift-List app on your Home Screen. Open it from there, then come
+          back to this switch.
+        </p>
+      )}
+      {state === 'unsupported' && <p className="muted small">This phone's browser can't show notifications.</p>}
+      {state === 'denied' && (
+        <p className="muted small">Notifications are blocked for Gift-List. Turn them on in your phone's settings.</p>
+      )}
+      {(state === 'off' || state === 'on') && (
+        <>
+          <label className="toggle">
+            <input type="checkbox" checked={state === 'on'} disabled={busy} onChange={() => void toggle()} />
+            <span>Notify this phone</span>
+          </label>
+          {state === 'on' && (
+            <button type="button" className="btn" disabled={busy} onClick={() => void test()}>
+              Send a test notification
+            </button>
+          )}
+        </>
+      )}
+    </section>
   );
 }
 
