@@ -2,6 +2,7 @@ import { format, parseISO } from 'date-fns';
 import { formatCents } from '../lib/money';
 import { NEXT_ACTION, nextStatus, type GiftStatus } from '../lib/status';
 import { memberName, type Gift, type Member, type Person } from '../lib/types';
+import { looksLikeUrl } from '../lib/linkPreview';
 import { Avatar } from './Avatar';
 import { GiftPhoto } from './GiftPhoto';
 import { Icon } from './Icon';
@@ -34,6 +35,7 @@ export function GiftCard({
   const price = gift.paid ?? gift.estimate;
   const next = nextStatus(gift.status);
   const buyer = buyerText(gift, members, me);
+  const hasLink = Boolean(gift.link && looksLikeUrl(gift.link));
   return (
     <article className={`gift-card${wiggle ? ' wiggle' : ''}${gift.status === 'given' ? ' is-given' : ''}`}>
       <GiftPhoto path={gift.photo_path} alt="" onAdd={gift.photo_path ? undefined : onOpen} />
@@ -47,6 +49,14 @@ export function GiftCard({
             </span>
           )}
         </div>
+        {person && (
+          <p className="gift-for">
+            <Avatar name={person.name} photoPath={person.photo_path} size={24} />
+            <span>
+              For <strong>{person.name}</strong>
+            </span>
+          </p>
+        )}
         <h3 className="gift-name">
           {/* The whole card opens the gift; this button carries the name for screen readers. */}
           <button type="button" className="stretched" onClick={onOpen}>
@@ -55,8 +65,7 @@ export function GiftCard({
         </h3>
         <p className="gift-meta small muted">
           {[
-            person?.name && `For ${person.name}`,
-            gift.store,
+            !hasLink && gift.store,
             buyer && `Buyer: ${buyer}`,
             gift.ship_by && gift.status !== 'given' && `Ship by ${format(parseISO(gift.ship_by), 'MMM d')}`,
           ]
@@ -64,10 +73,25 @@ export function GiftCard({
             .join(' · ')}
         </p>
         <StatusStrip status={gift.status} compact />
-        {next && (
-          <button type="button" className="btn tiny next-step" onClick={() => onStatus(next)}>
-            <Icon name="check" size={16} /> {NEXT_ACTION[gift.status]}
-          </button>
+        {(next || hasLink) && (
+          <div className="gift-actions">
+            {next && (
+              <button type="button" className="btn tiny next-step" onClick={() => onStatus(next)}>
+                <Icon name="check" size={16} /> {NEXT_ACTION[gift.status]}
+              </button>
+            )}
+            {hasLink && (
+              <a
+                className="btn tiny item-link"
+                href={gift.link!}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Open ${gift.name} on ${gift.store ?? 'the shop'} (opens in a new tab)`}
+              >
+                <Icon name="link" size={16} /> <span>{gift.store ? `View on ${gift.store}` : 'View item'}</span>
+              </a>
+            )}
+          </div>
         )}
       </div>
     </article>
