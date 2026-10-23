@@ -189,6 +189,7 @@ export function GiftSheet({
   async function remove() {
     try {
       const removed = gift!;
+      const extras = data.recipients.filter((r) => r.gift_id === giftId).map((r) => r.person_id);
       await data.deleteGift(giftId);
       // Keep the picture file until the Undo window has passed.
       let undone = false;
@@ -200,7 +201,8 @@ export function GiftSheet({
         run: async () => {
           undone = true;
           try {
-            await data.addGift(giftToInput(removed));
+            const back = await data.addGift(giftToInput(removed));
+            if (extras.length > 0) await data.setGiftRecipients(back.id, extras);
           } catch (err) {
             toast(errorText(err));
           }

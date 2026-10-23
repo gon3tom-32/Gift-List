@@ -397,6 +397,58 @@ begin
   if (select count(*) from push_subscriptions) <> 1 then raise exception 'FAIL: Bob cannot see exactly his own phone'; end if;
 end $$;
 
+-- Gifts for several people: extras live in gift_recipients
+with a as (
+  insert into people (household_id, group_id, name)
+  select (select v from t_ids where k = 'home'), (select v from t_ids where k = 'group'), 'Aunt A'
+  returning id
+) insert into t_ids select 'auntA', id from a;
+with b as (
+  insert into people (household_id, group_id, name)
+  select (select v from t_ids where k = 'home'), (select v from t_ids where k = 'group'), 'Aunt B'
+  returning id
+) insert into t_ids select 'auntB', id from b;
+with s as (
+  insert into gifts (household_id, person_id, name, estimate)
+  select (select v from t_ids where k = 'home'), (select v from t_ids where k = 'auntA'), 'Soap box', 25.00
+  returning id
+) insert into t_ids select 'soap', id from s;
+
+insert into gift_recipients (gift_id, person_id, household_id)
+select (select v from t_ids where k = 'soap'), (select v from t_ids where k = 'auntB'), (select v from t_ids where k = 'home');
+
+do $$
+declare ok boolean := false;
+begin
+  -- the main person can't also be an extra
+  begin
+    insert into gift_recipients (gift_id, person_id, household_id)
+    select (select v from t_ids where k = 'soap'), (select v from t_ids where k = 'auntA'), (select v from t_ids where k = 'home');
+  exception when others then ok := true;
+  end;
+  if not ok then raise exception 'FAIL: the main person was added as an extra recipient'; end if;
+end $$;
+
+-- Deleting the main person keeps the shared gift: Aunt B becomes the main person
+delete from people where id = (select v from t_ids where k = 'auntA');
+
+do $$
+begin
+  if (select person_id from gifts where id = (select v from t_ids where k = 'soap')) is distinct from (select v from t_ids where k = 'auntB') then
+    raise exception 'FAIL: the shared gift did not move to the next person';
+  end if;
+  if exists (select 1 from gift_recipients where gift_id = (select v from t_ids where k = 'soap')) then
+    raise exception 'FAIL: the promoted person is still listed as an extra';
+  end if;
+end $$;
+
+-- Deleting the last person deletes the gift
+delete from people where id = (select v from t_ids where k = 'auntB');
+do $$
+begin
+  if exists (select 1 from gifts where name = 'Soap box') then raise exception 'FAIL: gift survived with no recipients'; end if;
+end $$;
+
 reset role;
 
 -- Signed-out visitors can't call it
@@ -427,6 +479,11 @@ select set_config('request.jwt.claims',
 do $$
 begin
   if (select count(*) from push_subscriptions) <> 0 then raise exception 'FAIL: an outsider can read push subscriptions'; end if;
+end $$;
+do $$
+declare ok boolean := false;
+begin
+  if (select count(*) from gift_recipients) <> 0 then raise exception 'FAIL: an outsider can read gift recipients'; end if;
 end $$;
 reset role;
 

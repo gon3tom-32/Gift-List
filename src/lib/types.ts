@@ -78,6 +78,13 @@ export interface Gift {
   updated_at: string;
 }
 
+/** An extra person a gift is shared with (the main person is gift.person_id). */
+export interface GiftRecipient {
+  gift_id: string;
+  person_id: string;
+  household_id: string;
+}
+
 export interface GiftEvent {
   id: number;
   gift_id: string;
