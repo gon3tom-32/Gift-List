@@ -211,6 +211,9 @@ export function Home({ householdId, me }: { householdId: string; me: string }) {
           onAdded={(g) => {
             markAdded(g.id);
             setSheet(null);
+            // Show the new idea in the full list, wherever you were.
+            window.location.hash = routeHref({ name: 'gifts' });
+            document.getElementById('main')?.scrollIntoView({ block: 'start' });
           }}
         />
       )}

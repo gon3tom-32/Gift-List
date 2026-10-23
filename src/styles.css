@@ -1011,13 +1011,44 @@ details.more[open] summary {
 .stretched:focus-visible {
   outline: none;
 }
-.next-step {
+.gift-for {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+.gift-for strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.15rem;
+  color: var(--candy-strong);
+}
+.gift-for .avatar {
+  box-shadow: none;
+}
+.gift-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+.gift-actions .btn {
   position: relative; /* sits above the stretched button */
   z-index: 1;
-  justify-self: start;
-  margin-top: 2px;
+}
+.next-step {
   color: var(--mint-text);
   border-color: var(--mint);
+}
+.item-link {
+  max-width: 100%;
+  text-decoration: none;
+}
+.item-link span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .gift-meta:empty {
   display: none;
