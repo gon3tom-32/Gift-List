@@ -114,32 +114,35 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
                   {families.length > 0 && ` · ${families.length} ${families.length === 1 ? 'family' : 'families'}`}
                 </p>
               </div>
-              <button
-                type="button"
-                className="icon-btn group-edit"
-                onClick={() => tools.openSheet({ kind: 'group', id: group.id })}
-                aria-label={`Edit ${group.name}`}
-              >
-                <Icon name="edit" size={18} />
-              </button>
-            </div>
-            <div className="group-actions">
-              <button
-                type="button"
-                className="btn tiny"
-                onClick={() => tools.openSheet({ kind: 'person', groupId: group.id })}
-                aria-label={`Add person to ${group.name}`}
-              >
-                <Icon name="plus" size={14} /> Person
-              </button>
-              <button
-                type="button"
-                className="btn tiny"
-                onClick={() => tools.openSheet({ kind: 'family', groupId: group.id })}
-                aria-label={`Add family to ${group.name}`}
-              >
-                <Icon name="plus" size={14} /> Family
-              </button>
+              <div className="group-actions">
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={() => tools.openSheet({ kind: 'person', groupId: group.id })}
+                  aria-label={`Add person to ${group.name}`}
+                  title="Add person"
+                >
+                  <Icon name="userPlus" size={20} />
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={() => tools.openSheet({ kind: 'family', groupId: group.id })}
+                  aria-label={`Add family to ${group.name}`}
+                  title="Add family"
+                >
+                  <Icon name="homePlus" size={20} />
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={() => tools.openSheet({ kind: 'group', id: group.id })}
+                  aria-label={`Edit ${group.name}`}
+                  title="Edit group"
+                >
+                  <Icon name="edit" size={18} />
+                </button>
+              </div>
             </div>
             <BudgetBar budget={group.budget} totals={totals} label={group.name} />
 
@@ -178,7 +181,7 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
                   {members.length > 0 ? (
                     <div className="people-grid">{members.map(renderPerson)}</div>
                   ) : (
-                    <p className="small muted">No one yet. Use + Person above and pick this family.</p>
+                    <p className="small muted">No one yet. Tap the add-person icon above and pick this family.</p>
                   )}
                 </section>
               );

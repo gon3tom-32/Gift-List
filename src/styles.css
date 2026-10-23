@@ -771,18 +771,17 @@ details.more[open] summary {
   flex: 1;
   min-width: 0;
 }
-/* Edit sits in the group's top-right corner. */
-.group-edit {
-  align-self: flex-start;
-  margin: -4px -6px 0 0;
-}
-/* + Person and + Family on their own row, lined up with the group name
-   (the icon is 40px wide plus a 10px gap). */
+/* Add person, add family and edit: compact icons on the group's right. */
 .group-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding-left: 50px;
+  align-items: center;
+  gap: 0;
+  margin-right: -8px;
+  flex: none;
+}
+.group-actions .icon-btn {
+  width: 40px;
+  height: 40px;
 }
 .group-head h2 {
   flex: 1;
