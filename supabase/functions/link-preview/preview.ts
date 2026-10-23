@@ -134,9 +134,11 @@ export interface Preview {
   title: string | null;
   image: string | null;
   site: string | null;
+  /** US dollars as a plain amount, e.g. "89.99". Goes into the gift's estimate. */
+  price: string | null;
 }
 
-const EMPTY: Preview = { title: null, image: null, site: null };
+const EMPTY: Preview = { title: null, image: null, site: null, price: null };
 
 // ---------------------------------------------------------------------------
 // Amazon: product pages have no og:image, and Amazon often answers automated
@@ -214,6 +216,71 @@ function jsonLdImage(html: string): string | null {
   return m ? m[1].replace(/\\\//g, '/') : null;
 }
 
+// ---------------------------------------------------------------------------
+// Price: shops put it in different places. Only US dollars are used.
+// ---------------------------------------------------------------------------
+
+/** "$1,299.99" → "1299.99"; null unless it's a sensible amount. */
+export function normalizePrice(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const text = decodeEntities(String(raw)).replace(/^\s*(?:US)?\$\s*/i, '').replace(/,/g, '').trim();
+  if (!/^\d{1,6}(?:\.\d{1,2})?$/.test(text)) return null;
+  const value = Number(text);
+  if (!(value > 0 && value < 100_000)) return null;
+  return value.toFixed(2);
+}
+
+function notUsd(currency: string | null | undefined): boolean {
+  return Boolean(currency && currency.trim().toUpperCase() !== 'USD');
+}
+
+function amazonPrice(html: string): string | null {
+  const twister = /id=["']twister-plus-price-data-price["'][^>]*value=["']([^"']+)["']/i.exec(html)?.[1];
+  const fromTwister = normalizePrice(twister);
+  if (fromTwister) return fromTwister;
+  const amount = normalizePrice(/"priceAmount"\s*:\s*"?([\d.,]+)"?/.exec(html)?.[1]);
+  if (amount) return amount;
+  // The price you'd pay sits in the core price block (desktop or mobile).
+  for (const marker of ['priceToPay', 'corePrice', 'apex_desktop', 'apex_offerDisplay']) {
+    const at = html.indexOf(marker);
+    if (at === -1) continue;
+    const span = /<span class=["']a-offscreen["']>\s*([^<]+?)\s*<\/span>/i.exec(html.slice(at, at + 4000))?.[1];
+    const found = normalizePrice(span);
+    if (found) return found;
+  }
+  return null;
+}
+
+export function findPrice(html: string, amazon: boolean): string | null {
+  if (!html) return null;
+  if (amazon) {
+    const a = amazonPrice(html);
+    if (a) return a;
+  }
+  // Meta tags (Shopify and many shops)
+  const metaCurrency = metaContent(html, ['product:price:currency', 'og:price:currency']);
+  if (!notUsd(metaCurrency)) {
+    const meta = normalizePrice(metaContent(html, ['product:price:amount', 'og:price:amount']));
+    if (meta) return meta;
+  }
+  // Microdata: itemprop="price" content="…"
+  const micro =
+    /itemprop=["']price["'][^>]*content=["']([^"']+)["']/i.exec(html)?.[1] ??
+    /content=["']([^"']+)["'][^>]*itemprop=["']price["']/i.exec(html)?.[1];
+  const microCurrency = /itemprop=["']priceCurrency["'][^>]*content=["']([^"']+)["']/i.exec(html)?.[1];
+  if (!notUsd(microCurrency)) {
+    const m = normalizePrice(micro);
+    if (m) return m;
+  }
+  // JSON-LD offers: "price": "49.99" or "lowPrice": 49.99
+  const ldCurrency = /"priceCurrency"\s*:\s*"([A-Za-z]{3})"/.exec(html)?.[1];
+  if (!notUsd(ldCurrency)) {
+    const ld = normalizePrice(/"(?:price|lowPrice)"\s*:\s*"?(\$?[\d.,]+)"?/.exec(html)?.[1]);
+    if (ld) return ld;
+  }
+  return null;
+}
+
 function absolute(raw: string | null, base: string): string | null {
   if (!raw) return null;
   try {
@@ -237,6 +304,7 @@ export function parsePreview(html: string, finalUrl: string): Preview {
     finalUrl,
   );
   let site = metaContent(html, ['og:site_name', 'application-name']);
+  const price = findPrice(html, isAmazon(finalUrl));
 
   if (isAmazon(finalUrl)) {
     site = 'Amazon';
@@ -247,7 +315,7 @@ export function parsePreview(html: string, finalUrl: string): Preview {
     if (!title || BLOCKED_TITLE.test(title)) title = amazonTitleFromUrl(finalUrl);
   }
 
-  return { title: title?.slice(0, 200) || null, image, site: site?.slice(0, 80) ?? null };
+  return { title: title?.slice(0, 200) || null, image, site: site?.slice(0, 80) ?? null, price };
 }
 
 /** Reads a page's title, picture and site name. Never throws. */

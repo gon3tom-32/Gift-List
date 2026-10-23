@@ -50,7 +50,7 @@ describe('DNS checks', () => {
   });
 });
 
-import { amazonAsin, isAmazon, parsePreview } from './preview.ts';
+import { amazonAsin, findPrice, isAmazon, normalizePrice, parsePreview } from './preview.ts';
 
 describe('Amazon previews', () => {
   const productUrl = 'https://www.amazon.com/LEGO-Treehouse-Building-Set/dp/B0BBSBJ4YK?ref_=abc&th=1';
@@ -74,6 +74,7 @@ describe('Amazon previews', () => {
       title: 'LEGO Ideas Treehouse 21318',
       image: 'https://m.media-amazon.com/images/I/81abc._AC_SL1500_.jpg',
       site: 'Amazon',
+      price: null,
     });
   });
 
@@ -88,6 +89,7 @@ describe('Amazon previews', () => {
       title: 'LEGO Treehouse Building Set',
       image: 'https://images-na.ssl-images-amazon.com/images/P/B0BBSBJ4YK.01.L.jpg',
       site: 'Amazon',
+      price: null,
     });
   });
 
@@ -102,6 +104,7 @@ describe('Amazon previews', () => {
       title: 'Socks',
       image: 'https://shop.test/img/a.jpg',
       site: null,
+      price: null,
     });
     expect(parsePreview('<link rel="image_src" href="https://cdn.test/b.png">', 'https://shop.test/p/2').image).toBe(
       'https://cdn.test/b.png',
@@ -118,5 +121,48 @@ describe('JSON-LD image shapes', () => {
     expect(parsePreview('{"image":{"@type":"ImageObject","url":"https://cdn.test/e.jpg"}}', 'https://shop.test/').image).toBe(
       'https://cdn.test/e.jpg',
     );
+  });
+});
+
+describe('prices', () => {
+  it('cleans up price text', () => {
+    expect(normalizePrice('$1,299.99')).toBe('1299.99');
+    expect(normalizePrice('89.9')).toBe('89.90');
+    expect(normalizePrice(' US$ 25 ')).toBe('25.00');
+    expect(normalizePrice('0')).toBeNull();
+    expect(normalizePrice('Free')).toBeNull();
+    expect(normalizePrice('250000')).toBeNull();
+    expect(normalizePrice(null)).toBeNull();
+  });
+
+  it('reads Amazon prices from the price block', () => {
+    const page = `<div id="corePrice_feature_div"><span class="a-price aok-align-center priceToPay">
+      <span class="a-offscreen">$89.96</span><span aria-hidden="true">$89<sup>96</sup></span></span>
+      <span class="a-price a-text-price"><span class="a-offscreen">$109.99</span></span></div>`;
+    expect(findPrice(page, true)).toBe('89.96');
+    expect(findPrice('<input type="hidden" id="twister-plus-price-data-price" value="64.99">', true)).toBe('64.99');
+    expect(findPrice('{"priceAmount":39.95,"currencySymbol":"$"}', true)).toBe('39.95');
+  });
+
+  it('ignores an Amazon a-offscreen price outside the main price block', () => {
+    expect(findPrice('<div id="similar"><span class="a-offscreen">$5.00</span></div>', true)).toBeNull();
+  });
+
+  it('reads meta, microdata and JSON-LD prices from other shops', () => {
+    expect(findPrice('<meta property="product:price:amount" content="24.00"><meta property="product:price:currency" content="USD">', false)).toBe('24.00');
+    expect(findPrice('<span itemprop="price" content="19.99">$19.99</span>', false)).toBe('19.99');
+    expect(findPrice('{"@type":"Offer","price":"49.5","priceCurrency":"USD"}', false)).toBe('49.50');
+    expect(findPrice('{"@type":"AggregateOffer","lowPrice":12,"priceCurrency":"USD"}', false)).toBe('12.00');
+  });
+
+  it('skips prices in other currencies, and pages with no price', () => {
+    expect(findPrice('<meta property="og:price:amount" content="30"><meta property="og:price:currency" content="EUR">', false)).toBeNull();
+    expect(findPrice('{"price":"30","priceCurrency":"GBP"}', false)).toBeNull();
+    expect(findPrice('<title>Socks</title>', false)).toBeNull();
+  });
+
+  it('comes back from parsePreview', () => {
+    const page = '<title>Amazon.com: Shaver : Beauty</title><span class="a-price priceToPay"><span class="a-offscreen">$79.00</span></span>';
+    expect(parsePreview(page, 'https://www.amazon.com/Shaver/dp/B0BBSBJ4YK').price).toBe('79.00');
   });
 });
