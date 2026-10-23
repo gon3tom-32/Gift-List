@@ -178,16 +178,31 @@ function amazonTitleFromUrl(url: string): string | null {
   }
 }
 
-/** Finds the main product photo in Amazon's page markup. */
+/** Asks Amazon's image server for a bigger copy: "…._AC_SX38_.jpg" → "…._AC_SL1000_.jpg". */
+export function largerAmazonImage(url: string): string {
+  return url.replace(/\._[^/]*?_\.(jpe?g|png|webp)$/i, '._AC_SL1000_.$1');
+}
+
+/** Finds the main product photo in Amazon's page markup (desktop or phone layout). */
 function amazonImageFromHtml(html: string): string | null {
-  const hires = /data-old-hires=["'](https:\/\/[^"']+)["']/i.exec(html)?.[1];
-  if (hires) return decodeEntities(hires);
-  const dynamic = /data-a-dynamic-image=["']\{\s*(?:&quot;|")(https:\/\/[^"&]+)(?:&quot;|")/i.exec(html)?.[1];
-  if (dynamic) return decodeEntities(dynamic);
-  const hiRes = /"hiRes"\s*:\s*"(https:\/\/[^"]+)"/.exec(html)?.[1];
-  if (hiRes) return hiRes;
-  const large = /"large"\s*:\s*"(https:\/\/[^"]+)"/.exec(html)?.[1];
-  return large ?? null;
+  const attr = (re: RegExp) => {
+    const hit = re.exec(html)?.[1];
+    return hit ? decodeEntities(hit) : null;
+  };
+  // Desktop: <img id="landingImage" data-old-hires="…" data-a-dynamic-image="{&quot;…&quot;:[…]}">
+  const found =
+    attr(/data-old-hires=["'](https:\/\/[^"']+)["']/i) ??
+    attr(/data-a-dynamic-image=["']\{\s*(?:&quot;|")(https:\/\/[^"&]+)(?:&quot;|")/i) ??
+    // Phone: <img id="main-image" data-a-hires="…" src="…">
+    attr(/data-a-hires=["'](https:\/\/[^"']+)["']/i) ??
+    attr(/<img[^>]+id=["'](?:main-image|landingImage|imgBlkFront)["'][^>]*\ssrc=["'](https:\/\/[^"']+)["']/i) ??
+    attr(/<img[^>]+\ssrc=["'](https:\/\/[^"']+)["'][^>]*id=["'](?:main-image|landingImage|imgBlkFront)["']/i) ??
+    /"hiRes"\s*:\s*"(https:\/\/[^"]+)"/.exec(html)?.[1] ??
+    /"large"\s*:\s*"(https:\/\/[^"]+)"/.exec(html)?.[1] ??
+    // Last resort: the first product photo on the page (Amazon keeps those under /images/I/).
+    /(https:\/\/(?:m\.media-amazon\.com|images-[a-z]+\.ssl-images-amazon\.com)\/images\/I\/[A-Za-z0-9+%-]+(?:\.[^"'\s,)]*?)?\.(?:jpe?g|png|webp))/i.exec(html)?.[1] ??
+    null;
+  return found ? largerAmazonImage(found) : null;
 }
 
 /** "Amazon.com: LEGO Treehouse : Toys & Games" → "LEGO Treehouse". */

@@ -50,7 +50,7 @@ describe('DNS checks', () => {
   });
 });
 
-import { amazonAsin, findPrice, isAmazon, normalizePrice, parsePreview } from './preview.ts';
+import { amazonAsin, findPrice, isAmazon, largerAmazonImage, normalizePrice, parsePreview } from './preview.ts';
 
 describe('Amazon previews', () => {
   const productUrl = 'https://www.amazon.com/LEGO-Treehouse-Building-Set/dp/B0BBSBJ4YK?ref_=abc&th=1';
@@ -72,7 +72,7 @@ describe('Amazon previews', () => {
         data-a-dynamic-image="{&quot;https://m.media-amazon.com/images/I/81abc._AC_SX679_.jpg&quot;:[679,679]}"></body></html>`;
     expect(parsePreview(html, productUrl)).toEqual({
       title: 'LEGO Ideas Treehouse 21318',
-      image: 'https://m.media-amazon.com/images/I/81abc._AC_SL1500_.jpg',
+      image: 'https://m.media-amazon.com/images/I/81abc._AC_SL1000_.jpg',
       site: 'Amazon',
       price: null,
     });
@@ -164,5 +164,34 @@ describe('prices', () => {
   it('comes back from parsePreview', () => {
     const page = '<title>Amazon.com: Shaver : Beauty</title><span class="a-price priceToPay"><span class="a-offscreen">$79.00</span></span>';
     expect(parsePreview(page, 'https://www.amazon.com/Shaver/dp/B0BBSBJ4YK').price).toBe('79.00');
+  });
+});
+
+describe("Amazon's phone layout", () => {
+  const url = 'https://www.amazon.com/OUOBOB-Small-Sweater/dp/B0DQPWXMR1';
+
+  it('asks for a bigger copy of an Amazon image', () => {
+    expect(largerAmazonImage('https://m.media-amazon.com/images/I/61Abc+xyz._AC_SX38_SY50_.jpg')).toBe(
+      'https://m.media-amazon.com/images/I/61Abc+xyz._AC_SL1000_.jpg',
+    );
+    expect(largerAmazonImage('https://m.media-amazon.com/images/I/61Abc.jpg')).toBe('https://m.media-amazon.com/images/I/61Abc.jpg');
+  });
+
+  it('reads the main image on the phone page', () => {
+    const page = `<div id="imgTagWrapperId"><img alt="Dog sweater" id="main-image"
+      src="https://m.media-amazon.com/images/I/71dog._AC_SX425_.jpg"
+      data-a-hires="https://m.media-amazon.com/images/I/71dog._AC_SL1500_.jpg"></div>`;
+    expect(parsePreview(page, url).image).toBe('https://m.media-amazon.com/images/I/71dog._AC_SL1000_.jpg');
+  });
+
+  it('reads main-image src when there is no hi-res attribute', () => {
+    const page = `<img id="main-image" class="a-dynamic-image" src="https://m.media-amazon.com/images/I/81pj._AC_SY300_.jpg">`;
+    expect(parsePreview(page, url).image).toBe('https://m.media-amazon.com/images/I/81pj._AC_SL1000_.jpg');
+  });
+
+  it('falls back to the first product photo on the page before the old product-code address', () => {
+    const page = `<img src="https://m.media-amazon.com/images/G/01/logo.png">
+      <script>var data = {"thumb":"https://m.media-amazon.com/images/I/41zz._AC_US40_.jpg"};</script>`;
+    expect(parsePreview(page, url).image).toBe('https://m.media-amazon.com/images/I/41zz._AC_SL1000_.jpg');
   });
 });
