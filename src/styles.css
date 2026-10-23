@@ -1353,3 +1353,68 @@ dialog.sheet::backdrop {
     transition: none !important;
   }
 }
+
+/* ---------- Families inside a group ---------- */
+
+.family {
+  background: var(--mint-soft);
+  border: 1.5px solid color-mix(in srgb, var(--mint) 45%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+.family-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.family-icon {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  color: var(--mint-text);
+}
+.family-title {
+  flex: 1;
+  min-width: 0;
+}
+.family .person-card {
+  background: var(--surface);
+}
+.family-pick {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+.family-pick legend {
+  margin-bottom: 6px;
+}
+.family-pick ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 4px;
+}
+.family-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 4px 6px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.family-pick-row:hover {
+  background: var(--surface-2);
+}
+.family-pick-row input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--mint-text);
+}

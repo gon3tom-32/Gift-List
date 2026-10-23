@@ -6,6 +6,7 @@ import { supabase } from './supabase';
 import { centsToDb, type Cents } from './money';
 import {
   fromDb,
+  type Family,
   type Gift,
   type GiftEvent,
   type Group,
@@ -24,6 +25,7 @@ export interface HouseholdState {
   members: Member[];
   invites: Invite[];
   groups: Group[];
+  families: Family[];
   people: Person[];
   gifts: Gift[];
 }
@@ -35,6 +37,7 @@ const empty: HouseholdState = {
   members: [],
   invites: [],
   groups: [],
+  families: [],
   people: [],
   gifts: [],
 };
@@ -48,6 +51,7 @@ export interface GroupInput {
 export interface PersonInput {
   name: string;
   group_id: string;
+  family_id?: string | null;
   budget?: Cents | null;
   photo_path?: string | null;
 }
@@ -91,6 +95,15 @@ function remove<T extends { id: string }>(list: T[], id: string): T[] {
   return list.some((x) => x.id === id) ? list.filter((x) => x.id !== id) : list;
 }
 
+/** Removes a family locally; its people stay, just without a family. */
+function withoutFamily(s: HouseholdState, id: string): HouseholdState {
+  return {
+    ...s,
+    families: remove(s.families, id),
+    people: s.people.map((p) => (p.family_id === id ? { ...p, family_id: null } : p)),
+  };
+}
+
 function check<T>(res: { data: T; error: { message: string } | null }): NonNullable<T> {
   if (res.error) throw new Error(res.error.message);
   if (res.data === null || res.data === undefined) throw new Error('Nothing came back from the server.');
@@ -103,7 +116,7 @@ export function useHouseholdData(householdId: string) {
 
   const load = useCallback(async () => {
     try {
-      const [h, m, inv, g, p, gifts] = await Promise.all([
+      const [h, m, inv, g, f, p, gifts] = await Promise.all([
         supabase.from('households').select('id, name, budget, photo_path').eq('id', householdId).single(),
         supabase
           .from('household_members')
@@ -116,6 +129,7 @@ export function useHouseholdData(householdId: string) {
           .eq('household_id', householdId)
           .is('accepted_at', null),
         supabase.from('gift_groups').select('*').eq('household_id', householdId),
+        supabase.from('families').select('*').eq('household_id', householdId),
         supabase.from('people').select('*').eq('household_id', householdId),
         supabase.from('gifts').select('*').eq('household_id', householdId),
       ]);
@@ -127,6 +141,7 @@ export function useHouseholdData(householdId: string) {
         members: check(m) as Member[],
         invites: check(inv) as Invite[],
         groups: check(g).map(fromDb.group),
+        families: check(f).map(fromDb.family),
         people: check(p).map(fromDb.person),
         gifts: check(gifts).map(fromDb.gift),
       });
@@ -172,6 +187,14 @@ export function useHouseholdData(householdId: string) {
             gifts: s.gifts.filter((g) => g.person_id !== id),
           }));
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'families', filter }, (e) => {
+        if (e.eventType === 'DELETE') return;
+        setState((s) => ({ ...s, families: upsert(s.families, fromDb.family(e.new)) }));
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'families' }, (e) => {
+        const id = (e.old as { id?: string }).id;
+        if (id) setState((s) => withoutFamily(s, id));
+      })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'gift_groups' }, (e) => {
         const id = (e.old as { id?: string }).id;
         if (!id) return;
@@ -180,6 +203,7 @@ export function useHouseholdData(householdId: string) {
           return {
             ...s,
             groups: remove(s.groups, id),
+            families: s.families.filter((f) => f.group_id !== id),
             people: s.people.filter((p) => !gone.has(p.id)),
             gifts: s.gifts.filter((g) => !gone.has(g.person_id)),
           };
@@ -246,6 +270,7 @@ export function useHouseholdData(householdId: string) {
           return {
             ...s,
             groups: remove(s.groups, id),
+            families: s.families.filter((f) => f.group_id !== id),
             people: s.people.filter((p) => !gone.has(p.id)),
             gifts: s.gifts.filter((g) => !gone.has(g.person_id)),
           };
@@ -261,8 +286,36 @@ export function useHouseholdData(householdId: string) {
       },
 
       async updatePerson(id: string, patch: Partial<PersonInput>) {
+        // A family belongs to one group, so moving groups leaves the family.
+        if (patch.group_id !== undefined && patch.family_id === undefined) patch = { ...patch, family_id: null };
         const row = fromDb.person(check(await supabase.from('people').update(toDb(patch)).eq('id', id).select().single()));
         setState((s) => ({ ...s, people: upsert(s.people, row) }));
+      },
+
+      async addFamily(input: { name: string; group_id: string }): Promise<Family> {
+        const row = fromDb.family(
+          check(
+            await supabase
+              .from('families')
+              .insert({ name: input.name, group_id: input.group_id, household_id: householdId, sort_order: Date.now() % 2147483647 })
+              .select()
+              .single(),
+          ),
+        );
+        setState((s) => ({ ...s, families: upsert(s.families, row) }));
+        return row;
+      },
+
+      async updateFamily(id: string, patch: { name: string }) {
+        const row = fromDb.family(check(await supabase.from('families').update(patch).eq('id', id).select().single()));
+        setState((s) => ({ ...s, families: upsert(s.families, row) }));
+      },
+
+      /** Deletes the family; its people stay in the group. */
+      async deleteFamily(id: string) {
+        const del = await supabase.from('families').delete().eq('id', id);
+        if (del.error) throw new Error(del.error.message);
+        setState((s) => withoutFamily(s, id));
       },
 
       async deletePerson(id: string) {

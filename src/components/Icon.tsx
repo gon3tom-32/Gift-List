@@ -66,6 +66,7 @@ const paths = {
       <path d="M17 14c2.6 0 4.5 1.8 4.5 4.5" />
     </>
   ),
+  home: <path d="M3 11l9-7 9 7M5 9.5V20h5v-6h4v6h5V9.5" />,
   list: <path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" />,
   check: <path d="M4 12.5l5 5L20 6.5" />,
   sparkle: <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6" />,

@@ -17,13 +17,15 @@ import { QuickAddSheet } from '../sheets/QuickAddSheet';
 import { GiftSheet } from '../sheets/GiftSheet';
 import { PersonSheet } from '../sheets/PersonSheet';
 import { GroupSheet } from '../sheets/GroupSheet';
+import { FamilySheet } from '../sheets/FamilySheet';
 import { SettingsSheet } from '../sheets/SettingsSheet';
 
 export type SheetState =
   | { kind: 'quick'; personId?: string }
   | { kind: 'gift'; id: string }
-  | { kind: 'person'; id?: string; groupId?: string }
+  | { kind: 'person'; id?: string; groupId?: string; familyId?: string }
   | { kind: 'group'; id?: string }
+  | { kind: 'family'; id?: string; groupId: string }
   | { kind: 'settings' };
 
 export interface HomeTools {
@@ -203,9 +205,17 @@ export function Home({ householdId, me }: { householdId: string; me: string }) {
         <GiftSheet giftId={sheet.id} onClose={() => setSheet(null)} onStatus={changeStatus} />
       )}
       {sheet?.kind === 'person' && (
-        <PersonSheet personId={sheet.id} groupId={sheet.groupId} onClose={() => setSheet(null)} />
+        <PersonSheet
+          personId={sheet.id}
+          groupId={sheet.groupId}
+          familyId={sheet.familyId}
+          onClose={() => setSheet(null)}
+        />
       )}
       {sheet?.kind === 'group' && <GroupSheet groupId={sheet.id} onClose={() => setSheet(null)} />}
+      {sheet?.kind === 'family' && (
+        <FamilySheet familyId={sheet.id} groupId={sheet.groupId} onClose={() => setSheet(null)} />
+      )}
       {sheet?.kind === 'settings' && <SettingsSheet onClose={() => setSheet(null)} />}
     </AppContext.Provider>
   );

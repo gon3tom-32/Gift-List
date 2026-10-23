@@ -3,7 +3,8 @@ import { useApp } from '../lib/context';
 import { routeHref } from '../lib/route';
 import { errorText } from '../lib/supabase';
 import { isOpen } from '../lib/status';
-import type { GroupIcon } from '../lib/types';
+import type { GroupIcon, Person } from '../lib/types';
+import { formatCents, type Totals } from '../lib/money';
 import { Icon } from '../components/Icon';
 import { PersonCard } from '../components/Cards';
 import { BudgetBar } from '../components/BudgetBar';
@@ -78,7 +79,26 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
         const people = data.people
           .filter((p) => p.group_id === group.id)
           .sort((a, b) => a.name.localeCompare(b.name));
+        const families = data.families
+          .filter((f) => f.group_id === group.id)
+          .sort((a, b) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at));
+        const familyIds = new Set(families.map((f) => f.id));
+        const loose = people.filter((p) => !p.family_id || !familyIds.has(p.family_id));
         const totals = tools.totalsByGroup.get(group.id) ?? { spent: 0, planned: 0 };
+        const renderPerson = (p: Person) => {
+          const stats = giftStats.get(p.id) ?? { count: 0, open: 0 };
+          const t = tools.totalsByPerson.get(p.id) ?? { spent: 0, planned: 0 };
+          return (
+            <PersonCard
+              key={p.id}
+              person={p}
+              giftCount={stats.count}
+              openCount={stats.open}
+              total={t.spent + t.planned}
+              onOpen={() => (window.location.hash = routeHref({ name: 'person', id: p.id }))}
+            />
+          );
+        };
         return (
           <section key={group.id} className="group" aria-labelledby={`group-${group.id}`}>
             <div className="group-head">
@@ -90,6 +110,13 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
               </h2>
               <button
                 type="button"
+                className="btn tiny"
+                onClick={() => tools.openSheet({ kind: 'family', groupId: group.id })}
+              >
+                <Icon name="plus" size={14} /> Family
+              </button>
+              <button
+                type="button"
                 className="icon-btn"
                 onClick={() => tools.openSheet({ kind: 'group', id: group.id })}
                 aria-label={`Edit ${group.name}`}
@@ -98,21 +125,58 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
               </button>
             </div>
             <BudgetBar budget={group.budget} totals={totals} label={group.name} />
+
+            {families.map((fam) => {
+              const members = people.filter((p) => p.family_id === fam.id);
+              const famTotals = sumTotals(members.map((p) => tools.totalsByPerson.get(p.id)));
+              const famGifts = members.reduce((n, p) => n + (giftStats.get(p.id)?.count ?? 0), 0);
+              const famOpen = members.reduce((n, p) => n + (giftStats.get(p.id)?.open ?? 0), 0);
+              return (
+                <section key={fam.id} className="family" aria-labelledby={`family-${fam.id}`}>
+                  <div className="family-head">
+                    <span className="family-icon" aria-hidden="true">
+                      <Icon name="home" size={16} />
+                    </span>
+                    <div className="family-title">
+                      <h3 id={`family-${fam.id}`} className="h4">
+                        {fam.name}
+                      </h3>
+                      <p className="small muted">
+                        {members.length} {members.length === 1 ? 'person' : 'people'}
+                        {famGifts > 0 && ` · ${famGifts} gift${famGifts === 1 ? '' : 's'}`}
+                        {famOpen > 0 && ` · ${famOpen} open`}
+                        {famTotals.spent + famTotals.planned > 0 &&
+                          ` · ${formatCents(famTotals.spent + famTotals.planned, { whole: true })}`}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      onClick={() => tools.openSheet({ kind: 'family', id: fam.id, groupId: group.id })}
+                      aria-label={`Edit ${fam.name}`}
+                    >
+                      <Icon name="edit" size={16} />
+                    </button>
+                  </div>
+                  <div className="people-grid">
+                    {members.map(renderPerson)}
+                    <button
+                      type="button"
+                      className="person-card add"
+                      onClick={() => tools.openSheet({ kind: 'person', groupId: group.id, familyId: fam.id })}
+                    >
+                      <span className="avatar add-avatar" aria-hidden="true">
+                        <Icon name="plus" />
+                      </span>
+                      <span className="person-name">Add to family</span>
+                    </button>
+                  </div>
+                </section>
+              );
+            })}
+
             <div className="people-grid">
-              {people.map((p) => {
-                const stats = giftStats.get(p.id) ?? { count: 0, open: 0 };
-                const t = tools.totalsByPerson.get(p.id) ?? { spent: 0, planned: 0 };
-                return (
-                  <PersonCard
-                    key={p.id}
-                    person={p}
-                    giftCount={stats.count}
-                    openCount={stats.open}
-                    total={t.spent + t.planned}
-                    onOpen={() => (window.location.hash = routeHref({ name: 'person', id: p.id }))}
-                  />
-                );
-              })}
+              {loose.map(renderPerson)}
               <button
                 type="button"
                 className="person-card add"
@@ -144,5 +208,12 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
         )}
       </div>
     </div>
+  );
+}
+
+function sumTotals(list: (Totals | undefined)[]): Totals {
+  return list.reduce<Totals>(
+    (acc, t) => ({ spent: acc.spent + (t?.spent ?? 0), planned: acc.planned + (t?.planned ?? 0) }),
+    { spent: 0, planned: 0 },
   );
 }
