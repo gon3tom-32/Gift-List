@@ -380,6 +380,23 @@ begin
   end if;
 end $$;
 
+-- Push subscriptions: each member manages only their own phones
+insert into push_subscriptions (household_id, user_id, endpoint, p256dh, auth)
+select (select v from t_ids where k = 'home'), (select v from t_ids where k = 'bob'), 'https://push.example/bob', 'k', 'a';
+
+do $$
+declare ok boolean := false;
+begin
+  -- Bob can't register a phone for Alice
+  begin
+    insert into push_subscriptions (household_id, user_id, endpoint, p256dh, auth)
+    select (select v from t_ids where k = 'home'), (select v from t_ids where k = 'alice'), 'https://push.example/fake', 'k', 'a';
+  exception when others then ok := true;
+  end;
+  if not ok then raise exception 'FAIL: Bob registered a phone for Alice'; end if;
+  if (select count(*) from push_subscriptions) <> 1 then raise exception 'FAIL: Bob cannot see exactly his own phone'; end if;
+end $$;
+
 reset role;
 
 -- Signed-out visitors can't call it
@@ -392,6 +409,24 @@ begin
   exception when others then ok := true;
   end;
   if not ok then raise exception 'FAIL: anon could call mark_seen'; end if;
+end $$;
+reset role;
+
+-- Neither the partner nor an outsider can read Bob's phone
+set local role authenticated;
+select set_config('request.jwt.claims',
+  json_build_object('sub', (select v from t_ids where k = 'alice'),
+                    'email', 'alice@rls-test.example', 'role', 'authenticated')::text, true);
+do $$
+begin
+  if (select count(*) from push_subscriptions) <> 0 then raise exception 'FAIL: Alice can read Bob''s push subscription'; end if;
+end $$;
+select set_config('request.jwt.claims',
+  json_build_object('sub', (select v from t_ids where k = 'mallory'),
+                    'email', 'mallory@rls-test.example', 'role', 'authenticated')::text, true);
+do $$
+begin
+  if (select count(*) from push_subscriptions) <> 0 then raise exception 'FAIL: an outsider can read push subscriptions'; end if;
 end $$;
 reset role;
 
