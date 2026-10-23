@@ -34,6 +34,7 @@ One-time setup: in the repo on GitHub, open **Settings → Pages** and set **Sou
 - Sign in with your email and create the list. Then, in ⚙ Settings, the list owner can **Add your partner directly**: enter their email and a password, and they can sign in with **Password** straight away (the `add-partner` Edge Function creates the account). Or invite them by email instead; they join when they sign in with that email.
 - Tap **+** to add an idea. Only the name is needed. Paste a shop link and the app tries to fill in the name and picture.
 - Tap a card to fill in details: price, who's buying, ship-by date, payment method, photo.
+- **Share from any shop app:** set up the iPhone Shortcut described in ⚙ Settings → *Add ideas from any app*. It opens `…/Gift-List/#/add?url=<link>`, which opens quick add with the link (and its name and picture) filled in.
 
 ## Money rules
 

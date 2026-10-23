@@ -1430,3 +1430,10 @@ dialog.sheet::backdrop {
   height: 20px;
   accent-color: var(--mint-text);
 }
+
+.steps {
+  margin: 0;
+  padding-left: 1.3em;
+  display: grid;
+  gap: 6px;
+}

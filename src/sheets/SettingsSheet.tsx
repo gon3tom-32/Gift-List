@@ -320,11 +320,65 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         </form>
       </section>
 
+      <ShareShortcutHelp />
+
       <section className="section">
         <button className="btn link" onClick={() => void supabase.auth.signOut()}>
           Sign out
         </button>
       </section>
     </Sheet>
+  );
+}
+
+/** How to set up the iPhone Shortcut that shares shop pages into Gift-List. */
+function ShareShortcutHelp() {
+  const address = `${window.location.origin}${import.meta.env.BASE_URL}#/add?url=`;
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2500);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <section className="stack section">
+      <h3 className="h4">Add ideas from any app</h3>
+      <p className="muted small">
+        Set this up once on each phone. Then on any shop page, tap <strong>Share → Gift-List</strong> and the idea opens
+        here with the link filled in.
+      </p>
+      <ol className="steps small">
+        <li>
+          Open the <strong>Shortcuts</strong> app, tap <strong>+</strong>, and name it <strong>Gift-List</strong>.
+        </li>
+        <li>
+          Tap the <strong>ⓘ</strong> details and turn on <strong>Show in Share Sheet</strong>. Set it to receive{' '}
+          <strong>URLs, Safari web pages and Text</strong>.
+        </li>
+        <li>
+          Add the action <strong>URL Encode</strong> (it uses the <em>Shortcut Input</em>).
+        </li>
+        <li>
+          Add <strong>Text</strong>: paste the address below, then tap the variable bar and add{' '}
+          <em>URL Encoded Text</em> right after it.
+        </li>
+        <li>
+          Add <strong>Open URLs</strong> (it uses the <em>Text</em>). Done!
+        </li>
+      </ol>
+      <label className="field">
+        <span>Gift-List address for step 4</span>
+        <input readOnly value={address} onFocus={(e) => e.currentTarget.select()} />
+      </label>
+      <button type="button" className="btn small" onClick={() => void copy()}>
+        {copied ? 'Copied!' : 'Copy the Gift-List address'}
+      </button>
+    </section>
   );
 }
