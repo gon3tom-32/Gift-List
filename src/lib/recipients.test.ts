@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extrasByGift, recipientIds } from './recipients';
+import { extrasByGift, giftsLostWith, recipientIds } from './recipients';
 
 describe('recipients', () => {
   const rows = [
@@ -16,5 +16,16 @@ describe('recipients', () => {
     const map = extrasByGift(rows);
     expect(recipientIds({ id: 'g1', person_id: 'p1' }, map)).toEqual(['p1', 'p2', 'p3']);
     expect(recipientIds({ id: 'g7', person_id: 'p5' }, map)).toEqual(['p5']);
+  });
+
+  it('only loses gifts when every recipient is deleted', () => {
+    const map = extrasByGift(rows);
+    const gifts = [
+      { id: 'g1', person_id: 'p1' }, // shared with p2, p3
+      { id: 'g2', person_id: 'p8' }, // shared with p9
+      { id: 'g3', person_id: 'p1' }, // only p1
+    ];
+    expect(giftsLostWith(gifts, map, new Set(['p1'])).map((g) => g.id)).toEqual(['g3']);
+    expect(giftsLostWith(gifts, map, new Set(['p1', 'p2', 'p3'])).map((g) => g.id)).toEqual(['g1', 'g3']);
   });
 });

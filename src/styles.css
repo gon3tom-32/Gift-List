@@ -1069,6 +1069,64 @@ details.more[open] summary {
 .gift-for .avatar {
   box-shadow: none;
 }
+.gift-shared {
+  margin: 0;
+  color: var(--mint-text);
+  font-weight: 700;
+}
+.split-hint {
+  margin: 0;
+  color: var(--mint-text);
+  font-weight: 700;
+}
+.also-for {
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  background: var(--surface-2);
+}
+.also-for summary {
+  cursor: pointer;
+  font-weight: 700;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.also-for summary:focus-visible {
+  outline: 3px solid var(--mint);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.also-for-list {
+  max-height: 240px;
+  overflow-y: auto;
+  display: grid;
+  gap: 8px;
+  padding-bottom: 8px;
+}
+.also-for-list fieldset {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.also-for-list legend {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--muted);
+  padding: 4px 0;
+}
+.also-for .check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+.also-for .check input {
+  width: 22px;
+  height: 22px;
+}
 .gift-actions {
   display: flex;
   flex-wrap: wrap;

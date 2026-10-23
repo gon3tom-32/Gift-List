@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useApp } from '../lib/context';
 import { routeHref } from '../lib/route';
 import { errorText } from '../lib/supabase';
+import { recipientIds } from '../lib/recipients';
 import { isOpen } from '../lib/status';
 import type { GroupIcon, Person } from '../lib/types';
 import { formatCents, type Totals } from '../lib/money';
@@ -27,18 +28,21 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
     [data.groups],
   );
 
+  // A shared gift counts for every person it is for.
   const giftStats = useMemo(() => {
     const m = new Map<string, { count: number; open: number; ideas: number; purchased: number }>();
     for (const g of data.gifts) {
-      const s = m.get(g.person_id) ?? { count: 0, open: 0, ideas: 0, purchased: 0 };
-      s.count++;
-      if (g.status === 'idea') s.ideas++;
-      else s.purchased++;
-      if (isOpen(g.status)) s.open++;
-      m.set(g.person_id, s);
+      for (const id of recipientIds(g, tools.extras)) {
+        const s = m.get(id) ?? { count: 0, open: 0, ideas: 0, purchased: 0 };
+        s.count++;
+        if (g.status === 'idea') s.ideas++;
+        else s.purchased++;
+        if (isOpen(g.status)) s.open++;
+        m.set(id, s);
+      }
     }
     return m;
-  }, [data.gifts]);
+  }, [data.gifts, tools.extras]);
 
   async function addStarter(name: string, icon: GroupIcon) {
     setBusy(true);

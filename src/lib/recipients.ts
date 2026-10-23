@@ -12,3 +12,15 @@ export function extrasByGift(recipients: GiftRecipient[]): Map<string, string[]>
 export function recipientIds(gift: Pick<Gift, 'id' | 'person_id'>, extras: Map<string, string[]>): string[] {
   return [gift.person_id, ...(extras.get(gift.id) ?? [])];
 }
+
+/**
+ * Gifts that disappear when the given people are deleted: only those whose
+ * every recipient is being deleted. A gift shared with someone who stays survives.
+ */
+export function giftsLostWith<G extends Pick<Gift, 'id' | 'person_id'>>(
+  gifts: G[],
+  extras: Map<string, string[]>,
+  deleted: Set<string>,
+): G[] {
+  return gifts.filter((g) => recipientIds(g, extras).every((id) => deleted.has(id)));
+}

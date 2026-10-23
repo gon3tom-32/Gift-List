@@ -1,5 +1,5 @@
 import { format, parseISO } from 'date-fns';
-import { formatCents } from '../lib/money';
+import { formatCents, splitCents } from '../lib/money';
 import { NEXT_ACTION, nextStatus, type GiftStatus } from '../lib/status';
 import { memberName, type Gift, type Member, type Person } from '../lib/types';
 import { looksLikeUrl } from '../lib/linkPreview';
@@ -15,9 +15,34 @@ export function buyerText(g: Gift, members: Member[], me: string): string | null
   return memberName(members.find((m) => m.user_id === g.assigned_to));
 }
 
+/** "Joy, Lily +2": the first couple of names, then a count. */
+function otherNames(people: Person[]): string {
+  const shown = people.slice(0, 2).map((p) => p.name);
+  const rest = people.length - shown.length;
+  return `${shown.join(', ')}${rest > 0 ? ` +${rest}` : ''}`;
+}
+
+/** How a shared gift reads: the split on All gifts, your share on a person's page. */
+function sharedText(gift: Gift, recipients: Person[], viewerId?: string): string | null {
+  const n = recipients.length;
+  if (n < 2) return null;
+  const price = gift.paid ?? gift.estimate;
+  const shares = price === null ? null : splitCents(price, n);
+  if (viewerId) {
+    const i = Math.max(0, recipients.findIndex((p) => p.id === viewerId));
+    const others = otherNames(recipients.filter((p) => p.id !== viewerId));
+    return shares ? `Shared with ${others} · your share ${formatCents(shares[i])}` : `Shared with ${others}`;
+  }
+  if (!shares) return `Shared by ${n} people`;
+  const even = shares.every((s) => s === shares[0]);
+  return `Split ${n} ways · ${even ? '' : 'about '}${formatCents(shares[0])} each`;
+}
+
 export function GiftCard({
   gift,
   person,
+  recipients,
+  viewerId,
   members,
   me,
   wiggle,
@@ -27,6 +52,10 @@ export function GiftCard({
 }: {
   gift: Gift;
   person?: Person;
+  /** everyone the gift is for, main person first */
+  recipients?: Person[];
+  /** the person whose page this card is on, to show their share */
+  viewerId?: string;
   members: Member[];
   me: string;
   wiggle?: boolean;
@@ -38,6 +67,7 @@ export function GiftCard({
   const next = nextStatus(gift.status);
   const buyer = buyerText(gift, members, me);
   const hasLink = Boolean(gift.link && looksLikeUrl(gift.link));
+  const sharedLine = sharedText(gift, recipients ?? [], viewerId);
   return (
     <article className={`gift-card${wiggle ? ' wiggle' : ''}${gift.status === 'given' ? ' is-given' : ''}`}>
       <GiftPhoto path={gift.photo_path} alt="" onAdd={gift.photo_path ? undefined : onOpen} />
@@ -59,6 +89,7 @@ export function GiftCard({
             <Avatar name={person.name} photoPath={person.photo_path} size={24} />
             <span>
               For <strong>{person.name}</strong>
+              {recipients && recipients.length > 1 && <>, {otherNames(recipients.slice(1))}</>}
             </span>
           </p>
         )}
@@ -68,6 +99,7 @@ export function GiftCard({
             {gift.name}
           </button>
         </h3>
+        {sharedLine && <p className="gift-shared small">{sharedLine}</p>}
         <p className="gift-meta small muted">
           {[
             !hasLink && gift.store,

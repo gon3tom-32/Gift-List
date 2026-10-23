@@ -6,7 +6,7 @@ import { personTotals, sumGifts, type Totals } from '../lib/money';
 import { extrasByGift, recipientIds } from '../lib/recipients';
 import { isOpen, shouldCelebrate, statusIndex, type GiftStatus } from '../lib/status';
 import { errorText } from '../lib/supabase';
-import type { Gift } from '../lib/types';
+import type { Gift, Person } from '../lib/types';
 import { isNewFromPartner } from '../lib/newness';
 import { supabase } from '../lib/supabase';
 import { Header } from '../components/Header';
@@ -39,7 +39,9 @@ export interface HomeTools {
   totalsByPerson: Map<string, Totals>;
   totalsByGroup: Map<string, Totals>;
   newGifts: Set<string>;
-  renderGift: (g: Gift, opts?: { showPerson?: boolean }) => ReactElement;
+  /** gift id -> the extra people it is shared with */
+  extras: Map<string, string[]>;
+  renderGift: (g: Gift, opts?: { showPerson?: boolean; forPerson?: string }) => ReactElement;
 }
 
 export function Home({ householdId, me }: { householdId: string; me: string }) {
@@ -62,10 +64,11 @@ export function Home({ householdId, me }: { householdId: string; me: string }) {
   const openCount = useMemo(() => data.gifts.filter((g) => isOpen(g.status)).length, [data.gifts]);
 
   // A gift shared between people counts once overall; each person carries their share.
-  const totalsByPerson = useMemo(() => {
-    const extras = extrasByGift(data.recipients);
-    return personTotals(data.gifts, (g) => recipientIds(g, extras));
-  }, [data.gifts, data.recipients]);
+  const extras = useMemo(() => extrasByGift(data.recipients), [data.recipients]);
+  const totalsByPerson = useMemo(
+    () => personTotals(data.gifts, (g) => recipientIds(g, extras)),
+    [data.gifts, extras],
+  );
 
   const totalsByGroup = useMemo(() => {
     const groupOf = new Map(data.people.map((p) => [p.id, p.group_id]));
@@ -146,19 +149,27 @@ export function Home({ householdId, me }: { householdId: string; me: string }) {
     totalsByPerson,
     totalsByGroup,
     newGifts,
-    renderGift: (g, opts) => (
-      <GiftCard
-        key={g.id}
-        gift={g}
-        person={opts?.showPerson ? peopleById.get(g.person_id) : undefined}
-        members={data.members}
-        me={me}
-        wiggle={justAdded === g.id}
-        isNew={newGifts.has(g.id)}
-        onOpen={() => setSheet({ kind: 'gift', id: g.id })}
-        onStatus={(to) => void changeStatus(g, to)}
-      />
-    ),
+    extras,
+    renderGift: (g, opts) => {
+      const people = recipientIds(g, extras)
+        .map((id) => peopleById.get(id))
+        .filter((p): p is Person => Boolean(p));
+      return (
+        <GiftCard
+          key={g.id}
+          gift={g}
+          person={opts?.showPerson ? people[0] : undefined}
+          recipients={people}
+          viewerId={opts?.forPerson}
+          members={data.members}
+          me={me}
+          wiggle={justAdded === g.id}
+          isNew={newGifts.has(g.id)}
+          onOpen={() => setSheet({ kind: 'gift', id: g.id })}
+          onStatus={(to) => void changeStatus(g, to)}
+        />
+      );
+    },
   };
 
   // A person that was deleted (maybe by the partner) sends us back home.
