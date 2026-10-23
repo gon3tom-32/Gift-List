@@ -1271,6 +1271,7 @@ dialog.sheet::backdrop {
 }
 .sheet-foot {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 10px;
   padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
@@ -1367,6 +1368,9 @@ dialog.sheet::backdrop {
   z-index: 20;
 }
 .toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   background: var(--text);
   color: var(--bg);
   padding: 10px 16px;
@@ -1375,6 +1379,23 @@ dialog.sheet::backdrop {
   max-width: 420px;
   box-shadow: var(--shadow);
   animation: toast-in 0.2s ease-out;
+}
+.toast-action {
+  pointer-events: auto;
+  font: inherit;
+  font-weight: 800;
+  background: none;
+  border: none;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 8px 4px;
+  min-height: 44px;
+}
+.toast-action:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 @keyframes toast-in {
   from {

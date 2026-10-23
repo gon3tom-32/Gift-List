@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { useHouseholdData } from '../lib/data';
-import { AppContext, type AppContextValue } from '../lib/context';
+import { AppContext, UNDO_MS, type AppContextValue, type ToastAction } from '../lib/context';
 import { routeHref, useRoute } from '../lib/route';
 import { sumGifts, type Totals } from '../lib/money';
 import { isOpen, shouldCelebrate, statusIndex, type GiftStatus } from '../lib/status';
@@ -43,13 +43,13 @@ export function Home({ householdId, me }: { householdId: string; me: string }) {
   const route = useRoute();
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [justAdded, setJustAdded] = useState<string | null>(null);
-  const [toastText, setToastText] = useState<string | null>(null);
+  const [toastText, setToastText] = useState<{ message: string; action?: ToastAction } | null>(null);
   const toastTimer = useRef<number>(undefined);
 
-  const toast = useCallback((message: string) => {
-    setToastText(message);
+  const toast = useCallback((message: string, action?: ToastAction) => {
+    setToastText({ message, action });
     window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToastText(null), 3500);
+    toastTimer.current = window.setTimeout(() => setToastText(null), action ? UNDO_MS : 3500);
   }, []);
 
   const ctx: AppContextValue = useMemo(() => ({ data, me, toast }), [data, me, toast]);
@@ -83,11 +83,23 @@ export function Home({ householdId, me }: { householdId: string; me: string }) {
     async (g: Gift, to: GiftStatus) => {
       try {
         await updateGift(g.id, { status: to });
+        const undo: ToastAction = {
+          label: 'Undo',
+          run: async () => {
+            try {
+              await updateGift(g.id, { status: g.status });
+            } catch (err) {
+              toast(errorText(err));
+            }
+          },
+        };
         if (shouldCelebrate(g.status, to)) {
           confetti();
-          toast(`${g.name} is given. Ho ho ho!`);
+          toast(`${g.name} is given. Ho ho ho!`, undo);
         } else if (statusIndex(to) < statusIndex(g.status)) {
-          toast(`Moved back to ${to}.`);
+          toast(`Moved back to ${to}.`, undo);
+        } else {
+          toast(`Marked ${to}.`, undo);
         }
       } catch (err) {
         toast(errorText(err));
@@ -221,7 +233,24 @@ export function Home({ householdId, me }: { householdId: string; me: string }) {
       </button>
 
       <div className="toast-region" aria-live="polite" role="status">
-        {toastText && <div className="toast">{toastText}</div>}
+        {toastText && (
+          <div className="toast">
+            <span>{toastText.message}</span>
+            {toastText.action && (
+              <button
+                type="button"
+                className="toast-action"
+                onClick={() => {
+                  const { run } = toastText.action!;
+                  setToastText(null);
+                  void run();
+                }}
+              >
+                {toastText.action.label}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {sheet?.kind === 'quick' && (
@@ -240,7 +269,12 @@ export function Home({ householdId, me }: { householdId: string; me: string }) {
         />
       )}
       {sheet?.kind === 'gift' && (
-        <GiftSheet giftId={sheet.id} onClose={() => setSheet(null)} onStatus={changeStatus} />
+        <GiftSheet
+          giftId={sheet.id}
+          onClose={() => setSheet(null)}
+          onStatus={changeStatus}
+          onOpenGift={(id) => setSheet({ kind: 'gift', id })}
+        />
       )}
       {sheet?.kind === 'person' && (
         <PersonSheet
