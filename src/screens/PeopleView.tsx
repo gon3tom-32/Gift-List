@@ -105,9 +105,15 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
               <span className={`group-icon icon-${group.icon}`} aria-hidden="true">
                 <Icon name={group.icon} />
               </span>
-              <h2 id={`group-${group.id}`} className="h3">
-                {group.name}
-              </h2>
+              <div className="family-title">
+                <h2 id={`group-${group.id}`} className="h3">
+                  {group.name}
+                </h2>
+                <p className="small muted">
+                  {people.length} {people.length === 1 ? 'person' : 'people'}
+                  {families.length > 0 && ` · ${families.length} ${families.length === 1 ? 'family' : 'families'}`}
+                </p>
+              </div>
               <button
                 type="button"
                 className="btn tiny"
