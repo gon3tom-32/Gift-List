@@ -813,12 +813,54 @@ details.more[open] summary {
   background: var(--surface-2);
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 14px 8px;
+  padding: 22px 8px 14px;
   display: grid;
   justify-items: center;
   gap: 4px;
   cursor: pointer;
   transition: transform 0.12s ease;
+  position: relative;
+  overflow: hidden;
+}
+/* Candy-cane trim: red for ideas, mint once bought, grey when empty. */
+.person-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 10px;
+  background: repeating-linear-gradient(-45deg, var(--candy, #c62d3b) 0 10px, var(--surface, #fff) 10px 20px);
+}
+.person-card[data-status='purchased']::before {
+  --candy: var(--mint, #3aa686);
+}
+.person-card[data-status='empty']::before {
+  --candy: var(--border, #dbe3ef);
+}
+.avatar-hat {
+  position: relative;
+  display: inline-block;
+  margin-top: 26px;
+  line-height: 0;
+}
+.avatar-hat .hat {
+  position: absolute;
+  left: 50%;
+  top: -30px;
+  transform: translateX(-50%) rotate(-7deg);
+  transform-origin: 50% 100%;
+  pointer-events: none;
+}
+.person-card:hover .hat {
+  animation: hat-wiggle 0.5s ease-in-out;
+}
+@keyframes hat-wiggle {
+  25% { transform: translateX(-50%) rotate(-14deg); }
+  75% { transform: translateX(-50%) rotate(0deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .person-card:hover .hat {
+    animation: none;
+  }
 }
 .person-card:hover {
   border-color: var(--mint);
