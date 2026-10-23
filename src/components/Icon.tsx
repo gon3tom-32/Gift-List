@@ -67,6 +67,13 @@ const paths = {
     </>
   ),
   home: <path d="M3 11l9-7 9 7M5 9.5V20h5v-6h4v6h5V9.5" />,
+  userPlus: (
+    <>
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M19 8v6M16 11h6" />
+    </>
+  ),
+  homePlus: <path d="M3 11l8-6.5 8 6.5M5 9.5V20h5v-5h2M19 14v6M16 17h6" />,
   list: <path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" />,
   check: <path d="M4 12.5l5 5L20 6.5" />,
   sparkle: <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6" />,
