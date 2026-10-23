@@ -1,10 +1,19 @@
 import { createContext, useContext } from 'react';
 import type { HouseholdData } from './data';
 
+/** How long an Undo button stays on screen. */
+export const UNDO_MS = 7000;
+
+/** A button on a toast, such as Undo. */
+export interface ToastAction {
+  label: string;
+  run: () => void | Promise<void>;
+}
+
 export interface AppContextValue {
   data: HouseholdData;
   me: string;
-  toast: (message: string) => void;
+  toast: (message: string, action?: ToastAction) => void;
 }
 
 export const AppContext = createContext<AppContextValue | null>(null);

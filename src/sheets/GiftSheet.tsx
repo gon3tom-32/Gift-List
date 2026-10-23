@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
-import { useApp } from '../lib/context';
+import { UNDO_MS, useApp } from '../lib/context';
+import { duplicateInput, giftToInput } from '../lib/gifts';
 import { errorText } from '../lib/supabase';
 import { deletePhoto, uploadPhoto } from '../lib/photos';
 import { fetchLinkPreview, fetchPreviewImage, looksLikeUrl, storeFromUrl } from '../lib/linkPreview';
@@ -48,10 +49,12 @@ export function GiftSheet({
   giftId,
   onClose,
   onStatus,
+  onOpenGift,
 }: {
   giftId: string;
   onClose: () => void;
   onStatus: (g: Gift, to: GiftStatus) => Promise<void>;
+  onOpenGift: (id: string) => void;
 }) {
   const { data, me, toast } = useApp();
   const gift = data.gifts.find((g) => g.id === giftId);
@@ -173,12 +176,36 @@ export function GiftSheet({
     }
   }
 
+  async function duplicate() {
+    try {
+      const copy = await data.addGift(duplicateInput(gift!));
+      toast('Copied as a new idea. Change who it is for if you need to.');
+      onOpenGift(copy.id);
+    } catch (err) {
+      toast(errorText(err));
+    }
+  }
+
   async function remove() {
     try {
-      const old = gift!.photo_path;
+      const removed = gift!;
       await data.deleteGift(giftId);
-      void deletePhoto(old);
-      toast('Gift deleted.');
+      // Keep the picture file until the Undo window has passed.
+      let undone = false;
+      window.setTimeout(() => {
+        if (!undone) void deletePhoto(removed.photo_path);
+      }, UNDO_MS + 500);
+      toast('Gift deleted.', {
+        label: 'Undo',
+        run: async () => {
+          undone = true;
+          try {
+            await data.addGift(giftToInput(removed));
+          } catch (err) {
+            toast(errorText(err));
+          }
+        },
+      });
       onClose();
     } catch (err) {
       toast(errorText(err));
@@ -194,6 +221,9 @@ export function GiftSheet({
           <ConfirmButton confirmText="Tap again to delete" onConfirm={() => void remove()}>
             Delete
           </ConfirmButton>
+          <button type="button" className="btn" onClick={() => void duplicate()}>
+            Duplicate
+          </button>
           <button
             type="submit"
             form="gift-form"
