@@ -130,6 +130,28 @@ export function Home({ householdId, me }: { householdId: string; me: string }) {
     window.dispatchEvent(new HashChangeEvent('hashchange'));
   }, [shared]);
 
+  // Coming back from a person's page (the Everyone link or the phone's back
+  // gesture): scroll to their card instead of the top of the list.
+  const lastPerson = useRef<string | null>(null);
+  const routeName = route.name;
+  const routePersonId = route.name === 'person' ? route.id : null;
+  useEffect(() => {
+    if (routePersonId) {
+      lastPerson.current = routePersonId;
+      return;
+    }
+    if (routeName !== 'people' || data.loading) return;
+    const id = lastPerson.current;
+    lastPerson.current = null;
+    if (!id) return;
+    const card = document.querySelector<HTMLElement>(`[data-person-id="${CSS.escape(id)}"]`);
+    if (!card) return;
+    card.scrollIntoView({ block: 'center' });
+    card.classList.add('returned-to');
+    const t = window.setTimeout(() => card.classList.remove('returned-to'), 1600);
+    return () => window.clearTimeout(t);
+  }, [routeName, routePersonId, data.loading]);
+
   const personMissing = route.name === 'person' && !data.loading && !peopleById.has(route.id);
   useEffect(() => {
     if (personMissing) window.location.hash = routeHref({ name: 'people' });

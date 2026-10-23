@@ -112,7 +112,7 @@ export function PersonCard({
   onOpen: () => void;
 }) {
   return (
-    <button type="button" className="person-card" onClick={onOpen}>
+    <button type="button" className="person-card" data-person-id={person.id} onClick={onOpen}>
       <Avatar name={person.name} photoPath={person.photo_path} size={52} />
       <span className="person-name">{person.name}</span>
       <span className="small muted">
