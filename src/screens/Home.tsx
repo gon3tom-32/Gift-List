@@ -21,7 +21,8 @@ import { GiftSheet } from '../sheets/GiftSheet';
 import { PersonSheet } from '../sheets/PersonSheet';
 import { GroupSheet } from '../sheets/GroupSheet';
 import { FamilySheet } from '../sheets/FamilySheet';
-import { SettingsSheet } from '../sheets/SettingsSheet';
+import { SettingsSheet, type SettingsView } from '../sheets/SettingsSheet';
+import { TopBar } from '../components/TopBar';
 
 export type SheetState =
   | { kind: 'quick'; personId?: string; link?: string | null; name?: string | null }
@@ -29,7 +30,7 @@ export type SheetState =
   | { kind: 'person'; id?: string; groupId?: string; familyId?: string }
   | { kind: 'group'; id?: string }
   | { kind: 'family'; id?: string; groupId: string }
-  | { kind: 'settings' };
+  | { kind: 'settings'; view?: SettingsView };
 
 export interface HomeTools {
   openSheet: (s: SheetState) => void;
@@ -239,12 +240,13 @@ export function Home({ householdId, me }: { householdId: string; me: string }) {
       <a className="skip-link" href="#main">
         Skip to list
       </a>
+      <TopBar onSettings={() => setSheet({ kind: 'settings' })} />
       <Header
         household={data.household}
         totals={totals}
         openCount={openCount}
         peopleCount={data.people.length}
-        onSettings={() => setSheet({ kind: 'settings' })}
+        onSettings={(view) => setSheet({ kind: 'settings', view })}
       />
 
       {route.name !== 'person' && (
@@ -329,7 +331,7 @@ export function Home({ householdId, me }: { householdId: string; me: string }) {
       {sheet?.kind === 'family' && (
         <FamilySheet familyId={sheet.id} groupId={sheet.groupId} onClose={() => setSheet(null)} />
       )}
-      {sheet?.kind === 'settings' && <SettingsSheet onClose={() => setSheet(null)} />}
+      {sheet?.kind === 'settings' && <SettingsSheet view={sheet.view} onClose={() => setSheet(null)} />}
     </AppContext.Provider>
   );
 }

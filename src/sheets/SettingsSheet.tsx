@@ -2,7 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useApp } from '../lib/context';
 import { errorText, supabase } from '../lib/supabase';
 import { memberName } from '../lib/types';
-import type { Cents } from '../lib/money';
+import { formatCents, type Cents } from '../lib/money';
+import { Icon, type IconName } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { MoneyField, TextField } from '../components/Fields';
 import { Avatar } from '../components/Avatar';
@@ -10,7 +11,23 @@ import { PhotoPicker } from '../components/PhotoPicker';
 import { deletePhoto, uploadPhoto } from '../lib/photos';
 import { disablePush, enablePush, pushState, sendTestPush, type PushState } from '../lib/push';
 
-export function SettingsSheet({ onClose }: { onClose: () => void }) {
+export type SettingsView = 'menu' | 'list' | 'people' | 'notifications' | 'shortcut' | 'password';
+
+const PAGE_TITLES: Record<SettingsView, string> = {
+  menu: 'Settings',
+  list: 'Our list',
+  people: "Who's on the list",
+  notifications: 'Notifications',
+  shortcut: 'Add ideas from any app',
+  password: 'Sign-in and password',
+};
+
+export function SettingsSheet({ onClose, view = 'menu' }: { onClose: () => void; view?: SettingsView }) {
+  const [page, setPage] = useState<SettingsView>(view);
+  const [pushOn, setPushOn] = useState<PushState | null>(null);
+  useEffect(() => {
+    void pushState().then(setPushOn);
+  }, []);
   const { data, me, toast } = useApp();
   const household = data.household!;
   const meMember = data.members.find((m) => m.user_id === me);
@@ -102,7 +119,19 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     setBusy(true);
     try {
       await data.updateHousehold({ name: listName.trim() || 'Our Gift List', budget: budget ?? 0 });
-      if ((meMember?.display_name ?? '') !== myName.trim()) await data.setDisplayName(myName);
+      toast('Saved.');
+    } catch (err) {
+      toast(errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveMyName(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await data.setDisplayName(myName);
       toast('Saved.');
     } catch (err) {
       toast(errorText(err));
@@ -126,10 +155,59 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     }
   }
 
+  const summary: Record<Exclude<SettingsView, 'menu'>, string> = {
+    list: `${household.name} · ${household.budget ? formatCents(household.budget, { whole: true }) : 'no budget set'}`,
+    people: data.members.map((m) => memberName(m)).join(' and '),
+    notifications:
+      pushOn === 'on' ? 'On for this phone' : pushOn === 'needs-install' ? 'Needs the Home Screen app' : 'Off for this phone',
+    shortcut: 'Share a gift from any shop',
+    password: 'Sign in with email and password',
+  };
+  const rows: { id: Exclude<SettingsView, 'menu'>; icon: IconName }[] = [
+    { id: 'list', icon: 'gift' },
+    { id: 'people', icon: 'users' },
+    { id: 'notifications', icon: 'sparkle' },
+    { id: 'shortcut', icon: 'link' },
+    { id: 'password', icon: 'edit' },
+  ];
+
   return (
-    <Sheet title="Our list" onClose={onClose}>
+    <Sheet title={PAGE_TITLES[page]} onClose={onClose}>
+      {page !== 'menu' && (
+        <button type="button" className="btn small settings-back" onClick={() => setPage('menu')}>
+          <Icon name="back" size={16} /> Settings
+        </button>
+      )}
+
+      {page === 'menu' && (
+        <>
+          <ul className="settings-menu">
+            {rows.map((r) => (
+              <li key={r.id}>
+                <button type="button" className="settings-row" onClick={() => setPage(r.id)}>
+                  <span className="settings-row-icon" aria-hidden="true">
+                    <Icon name={r.icon} size={20} />
+                  </span>
+                  <span className="settings-row-text">
+                    <strong>{PAGE_TITLES[r.id]}</strong>
+                    <small className="muted">{summary[r.id]}</small>
+                  </span>
+                  <Icon name="chevron" size={18} aria-hidden="true" />
+                </button>
+              </li>
+            ))}
+          </ul>
+          <section className="section">
+            <button className="btn link" onClick={() => void supabase.auth.signOut()}>
+              Sign out
+            </button>
+          </section>
+        </>
+      )}
+
+      {page === 'list' && (
+        <>
       <section className="stack" aria-label="Our photo">
-        <h3 className="h4">Our photo</h3>
         <PhotoPicker
           preview={<Avatar name={household.name} photoPath={household.photo_path} size={72} />}
           hasPhoto={Boolean(household.photo_path)}
@@ -149,6 +227,16 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           onValidChange={setBudgetOk}
           placeholder="Not set"
         />
+        <button className="btn primary" disabled={busy || !budgetOk}>
+          Save
+        </button>
+      </form>
+        </>
+      )}
+
+      {page === 'people' && (
+        <>
+      <form className="stack" onSubmit={saveMyName}>
         <TextField
           label="Your name"
           value={myName}
@@ -157,13 +245,12 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           placeholder={meMember?.email?.split('@')[0] ?? ''}
           hint="What your partner sees next to your changes."
         />
-        <button className="btn primary" disabled={busy || !budgetOk}>
+        <button className="btn primary" disabled={busy}>
           Save
         </button>
       </form>
 
       <section className="stack section">
-        <h3 className="h4">Who's on the list</h3>
         <ul className="members">
           {data.members.map((m) => (
             <li key={m.user_id}>
@@ -280,9 +367,11 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           </details>
         )}
       </section>
+        </>
+      )}
 
+      {page === 'password' && (
       <section className="stack section">
-        <h3 className="h4">Sign-in password</h3>
         <p className="muted small">
           Set a password so you can sign in without waiting for an email. It's just for you; your partner sets their own.
         </p>
@@ -320,16 +409,11 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           </button>
         </form>
       </section>
+      )}
 
-      <NotificationsSection householdId={household.id} userId={me} />
+      {page === 'notifications' && <NotificationsSection householdId={household.id} userId={me} />}
 
-      <ShareShortcutHelp />
-
-      <section className="section">
-        <button className="btn link" onClick={() => void supabase.auth.signOut()}>
-          Sign out
-        </button>
-      </section>
+      {page === 'shortcut' && <ShareShortcutHelp />}
     </Sheet>
   );
 }
@@ -372,7 +456,6 @@ function NotificationsSection({ householdId, userId }: { householdId: string; us
 
   return (
     <section className="stack section">
-      <h3 className="h4">Notifications</h3>
       {state === 'needs-install' && (
         <p className="muted small">
           On iPhone, notifications only work from the Gift-List app on your Home Screen. Open it from there, then come
@@ -417,7 +500,6 @@ function ShareShortcutHelp() {
 
   return (
     <section className="stack section">
-      <h3 className="h4">Add ideas from any app</h3>
       <p className="muted small">
         Set this up once on each phone. Then on any shop page, tap <strong>Share → Gift-List</strong> and the idea opens
         here with the link filled in.
