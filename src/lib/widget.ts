@@ -76,6 +76,72 @@ function avatar(person) {
   return ctx.getImage();
 }
 
+// The app's tag logo as a small mint tile.
+function logo(px) {
+  const ctx = new DrawContext();
+  ctx.size = new Size(px, px);
+  ctx.opaque = false;
+  ctx.respectScreenScale = true;
+  ctx.setFillColor(new Color("#2bb59a"));
+  const tile = new Path();
+  tile.addRoundedRect(new Rect(0, 0, px, px), px * 0.28, px * 0.28);
+  ctx.addPath(tile);
+  ctx.fillPath();
+  const u = px / 120;
+  const tag = new Path();
+  tag.move(new Point(44 * u, 14 * u));
+  tag.addLine(new Point(76 * u, 14 * u));
+  tag.addLine(new Point(92 * u, 30 * u));
+  tag.addLine(new Point(92 * u, 102 * u));
+  tag.addLine(new Point(28 * u, 102 * u));
+  tag.addLine(new Point(28 * u, 30 * u));
+  tag.closeSubpath();
+  ctx.addPath(tag);
+  ctx.setFillColor(Color.white());
+  ctx.fillPath();
+  ctx.setFillColor(new Color("#2bb59a"));
+  ctx.fillEllipse(new Rect(54 * u, 21 * u, 12 * u, 12 * u));
+  ctx.setFillColor(new Color("#2bb59a"));
+  ctx.fillRect(new Rect(43 * u, 64 * u, 34 * u, 28 * u));
+  ctx.setFillColor(new Color(MINT));
+  ctx.fillRect(new Rect(57 * u, 58 * u, 6 * u, 34 * u));
+  return ctx.getImage();
+}
+
+// A red and white candy-cane stripe for the bottom edge.
+function stripe(width, height) {
+  const ctx = new DrawContext();
+  ctx.size = new Size(width, height);
+  ctx.opaque = true;
+  ctx.respectScreenScale = true;
+  ctx.setFillColor(Color.white());
+  ctx.fillRect(new Rect(0, 0, width, height));
+  ctx.setFillColor(new Color("#d94b5c"));
+  for (let x = -height; x < width + height; x += height * 2) {
+    const band = new Path();
+    band.move(new Point(x, height));
+    band.addLine(new Point(x + height, height));
+    band.addLine(new Point(x + height * 2, 0));
+    band.addLine(new Point(x + height, 0));
+    band.closeSubpath();
+    ctx.addPath(band);
+    ctx.fillPath();
+  }
+  return ctx.getImage();
+}
+
+// The title with the logo beside it.
+function title(stack, size) {
+  const row = stack.addStack();
+  row.layoutHorizontally();
+  row.centerAlignContent();
+  const mark = row.addImage(logo(44));
+  mark.imageSize = new Size(size + 6, size + 6);
+  row.addSpacer(5);
+  add(row, "Gift-List", size, "semibold", new Color("#ffffff", 0.92));
+  return row;
+}
+
 const data = await load();
 const family = config.widgetFamily || "medium";
 const w = new ListWidget();
@@ -106,24 +172,28 @@ if (family.indexOf("accessory") === 0) {
     add(w, open, 12, "semibold");
   }
 } else if (family === "medium" && data && people.length > 0) {
-  // Left: the countdown. Right: the people who most need a gift.
+  // Left: the countdown on a deeper mint panel. Right: the people who most need a gift.
   w.backgroundColor = new Color(MINT);
-  w.setPadding(12, 14, 12, 12);
+  w.setPadding(0, 0, 0, 0);
+  w.spacing = 0;
   const row = w.addStack();
   row.layoutHorizontally();
+  row.size = new Size(0, 140);
   const side = row.addStack();
   side.layoutVertically();
-  side.size = new Size(110, 128);
-  add(side, "Gift-List", 12, "semibold", new Color("#ffffff", 0.85));
+  side.backgroundColor = new Color("#126652");
+  side.size = new Size(116, 140);
+  side.setPadding(10, 11, 8, 8);
+  title(side, 12);
   side.addSpacer();
-  add(side, String(data.days), 40, "bold", Color.white());
+  add(side, String(data.days), 36, "bold", Color.white());
   add(side, data.days === 0 ? "Merry Christmas!" : "days to Christmas", 12, "semibold", new Color("#ffffff", 0.9));
-  side.addSpacer(6);
+  side.addSpacer(5);
   add(side, open, 13, "semibold", Color.white());
   if (left) add(side, left, 13, "semibold", data.leftCents < 0 ? new Color("#ffd6e4") : Color.white());
-  row.addSpacer(8);
   const grid = row.addStack();
   grid.layoutVertically();
+  grid.setPadding(10, 8, 4, 4);
   for (let r = 0; r < 2; r++) {
     const line = grid.addStack();
     line.layoutHorizontally();
@@ -132,21 +202,23 @@ if (family.indexOf("accessory") === 0) {
       const tile = line.addStack();
       tile.layoutVertically();
       tile.centerAlignContent();
-      tile.size = new Size(62, 62);
+      tile.size = new Size(58, 60);
       if (person) {
         tile.url = SITE + "#/person/" + person.id;
         const img = tile.addImage(avatar(person));
-        img.imageSize = new Size(40, 40);
+        img.imageSize = new Size(38, 38);
         tile.addSpacer(3);
         add(tile, person.name, 11, "semibold", Color.white());
       }
     }
     if (r === 0) grid.addSpacer(4);
   }
+  const bar = w.addImage(stripe(400, 8));
+  bar.imageSize = new Size(400, 8);
 } else {
   w.backgroundColor = new Color(MINT);
-  w.setPadding(14, 14, 14, 14);
-  add(w, "Gift-List", 13, "semibold", new Color("#ffffff", 0.85));
+  w.setPadding(14, 14, 0, 14);
+  title(w, 13);
   w.addSpacer(4);
   if (!data) {
     add(w, "Can't reach Gift-List", 15, "semibold", Color.white());
@@ -157,6 +229,9 @@ if (family.indexOf("accessory") === 0) {
     add(w, open, 15, "semibold", Color.white());
     if (left) add(w, left, 15, "semibold", data.leftCents < 0 ? new Color("#ffd6e4") : Color.white());
   }
+  w.addSpacer();
+  const bottom = w.addImage(stripe(400, 8));
+  bottom.imageSize = new Size(400, 8);
 }
 
 if (config.runsInWidget) {
