@@ -701,6 +701,24 @@ details.more[open] summary {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.steps {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 6px;
+}
+.code-box {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  padding: 10px 12px;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  resize: vertical;
+}
 .settings-back {
   justify-self: start;
 }

@@ -110,3 +110,33 @@ export function countdownMessage(days: number, gifts: { status: string }[]): Mes
   const ideaPart = ideas > 0 ? `, ${ideas} still just ${ideas === 1 ? 'an idea' : 'ideas'}` : '';
   return { title, body: `${open} gift${open === 1 ? '' : 's'} still open${ideaPart}.` };
 }
+
+export interface WidgetSummary {
+  name: string;
+  days: number;
+  open: number;
+  ideas: number;
+  hasBudget: boolean;
+  leftCents: number;
+  /** "$892", or "-$50" when over; empty when no budget is set. */
+  leftText: string;
+}
+
+/** Everything the phone widget shows. No gift or person names, only counts and totals. */
+export function widgetSummary(
+  household: { name: string; budget: number | string },
+  gifts: GiftRow[],
+  days: number,
+): WidgetSummary {
+  const hasBudget = Number(household.budget) > 0;
+  const leftCents = leftToSpend(household.budget, gifts);
+  return {
+    name: household.name,
+    days,
+    open: gifts.filter((g) => g.status !== 'given').length,
+    ideas: gifts.filter((g) => g.status === 'idea').length,
+    hasBudget,
+    leftCents,
+    leftText: hasBudget ? `${leftCents < 0 ? '-' : ''}${dollars(leftCents)}` : '',
+  };
+}

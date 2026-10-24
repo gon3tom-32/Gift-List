@@ -9,7 +9,9 @@ import {
   isMilestone,
   leftToSpend,
   shorten,
+  widgetSummary,
 } from './rules.ts';
+import { checkWidgetToken, makeWidgetToken } from './widgetToken.ts';
 
 describe('money in whole cents', () => {
   it('converts dollars without float drift', () => {
@@ -83,5 +85,40 @@ describe('countdown', () => {
     expect(countdownMessage(10, gifts)).toEqual({ title: '10 days to Christmas', body: '3 gifts still open, 2 still just ideas.' });
     expect(countdownMessage(1, [{ status: 'given' }])).toEqual({ title: '1 day to Christmas', body: 'Every gift is given.' });
     expect(countdownMessage(0, gifts).title).toBe('Merry Christmas!');
+  });
+});
+
+describe('widgetSummary', () => {
+  const gifts = [
+    { status: 'idea', estimate: 25, paid: null },
+    { status: 'ordered', estimate: 50, paid: 45.5 },
+    { status: 'given', estimate: 10, paid: 10 },
+  ];
+  it('counts open gifts and money left, with no names', () => {
+    const w = widgetSummary({ name: 'Gift List 2026', budget: 1000 }, gifts, 63);
+    expect(w).toEqual({ name: 'Gift List 2026', days: 63, open: 2, ideas: 1, hasBudget: true, leftCents: 100000 - 2500 - 4550 - 1000, leftText: '$919.50' });
+  });
+  it('shows a minus when over budget and nothing when there is no budget', () => {
+    expect(widgetSummary({ name: 'x', budget: 50 }, gifts, 5).leftText).toBe('-$30.50');
+    const none = widgetSummary({ name: 'x', budget: 0 }, gifts, 5);
+    expect(none.hasBudget).toBe(false);
+    expect(none.leftText).toBe('');
+  });
+});
+
+describe('widget links', () => {
+  const user = '8fd056cd-7293-4640-aec2-82e58b50c673';
+  it('accepts a link the server made', async () => {
+    const token = await makeWidgetToken(user, 'secret-one');
+    expect(await checkWidgetToken(token, 'secret-one')).toBe(user);
+  });
+  it('rejects edited, forged, wrong-secret and empty links', async () => {
+    const token = await makeWidgetToken(user, 'secret-one');
+    expect(await checkWidgetToken(token, 'secret-two')).toBeNull();
+    expect(await checkWidgetToken(token.replace(user, '11111111-2222-3333-4444-555555555555'), 'secret-one')).toBeNull();
+    expect(await checkWidgetToken(`${user}.AAAA`, 'secret-one')).toBeNull();
+    expect(await checkWidgetToken('nonsense', 'secret-one')).toBeNull();
+    expect(await checkWidgetToken(null, 'secret-one')).toBeNull();
+    expect(await checkWidgetToken(token, '')).toBeNull();
   });
 });
