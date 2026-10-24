@@ -9,7 +9,9 @@ import {
   isMilestone,
   leftToSpend,
   shorten,
+  widgetPeople,
   widgetSummary,
+  avatarColor,
 } from './rules.ts';
 import { checkWidgetToken, makeWidgetToken } from './widgetToken.ts';
 
@@ -96,7 +98,7 @@ describe('widgetSummary', () => {
   ];
   it('counts open gifts and money left, with no names', () => {
     const w = widgetSummary({ name: 'Gift List 2026', budget: 1000 }, gifts, 63);
-    expect(w).toEqual({ name: 'Gift List 2026', days: 63, open: 2, ideas: 1, hasBudget: true, leftCents: 100000 - 2500 - 4550 - 1000, leftText: '$919.50' });
+    expect(w).toEqual({ name: 'Gift List 2026', days: 63, open: 2, ideas: 1, hasBudget: true, leftCents: 100000 - 2500 - 4550 - 1000, leftText: '$919.50', people: [] });
   });
   it('shows a minus when over budget and nothing when there is no budget', () => {
     expect(widgetSummary({ name: 'x', budget: 50 }, gifts, 5).leftText).toBe('-$30.50');
@@ -120,5 +122,44 @@ describe('widget links', () => {
     expect(await checkWidgetToken('nonsense', 'secret-one')).toBeNull();
     expect(await checkWidgetToken(null, 'secret-one')).toBeNull();
     expect(await checkWidgetToken(token, '')).toBeNull();
+  });
+});
+
+describe('widgetPeople', () => {
+  const people = [
+    { id: 'p1', name: 'Zoe Adams' },
+    { id: 'p2', name: 'Ben' },
+    { id: 'p3', name: 'Andrew' },
+    { id: 'p4', name: 'Lily' },
+  ];
+  const gifts = [
+    { id: 'g1', person_id: 'p1', status: 'ordered' }, // Zoe: bought
+    { id: 'g2', person_id: 'p2', status: 'idea' }, // Ben: ideas
+    { id: 'g3', person_id: 'p4', status: 'idea' }, // Lily: ideas + bought
+    { id: 'g4', person_id: 'p4', status: 'wrapped' },
+  ];
+  it('puts people with nothing first, then ideas, partly bought, bought', () => {
+    const tiles = widgetPeople(people, gifts, []);
+    expect(tiles.map((t) => [t.name, t.status])).toEqual([
+      ['Andrew', 'none'],
+      ['Ben', 'ideas'],
+      ['Lily', 'partly'],
+      ['Zoe', 'bought'],
+    ]);
+  });
+  it('counts a shared gift for every person it is for', () => {
+    const tiles = widgetPeople(people, gifts, [{ gift_id: 'g1', person_id: 'p3' }]);
+    expect(tiles.find((t) => t.name === 'Andrew')?.status).toBe('bought');
+  });
+  it('uses first names, initials, at most six people, and handles an empty list', () => {
+    const many = Array.from({ length: 9 }, (_, i) => ({ id: `p${i}`, name: `Person ${i}` }));
+    expect(widgetPeople(many, [], []).length).toBe(6);
+    expect(widgetPeople(people, gifts, []).find((t) => t.id === 'p1')).toMatchObject({ name: 'Zoe', initial: 'Z' });
+    expect(widgetPeople([], [], [])).toEqual([]);
+  });
+  it('gives a person the same colour as the app does', () => {
+    // Pinned to what src/components/Avatar.tsx gives "Bella"; change both together.
+    expect(avatarColor('Bella')).toBe('#2a7d4f');
+    expect(avatarColor('Bella')).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

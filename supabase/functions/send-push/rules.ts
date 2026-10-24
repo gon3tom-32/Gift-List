@@ -111,6 +111,64 @@ export function countdownMessage(days: number, gifts: { status: string }[]): Mes
   return { title, body: `${open} gift${open === 1 ? '' : 's'} still open${ideaPart}.` };
 }
 
+// Same colours and name hash as the app's Avatar (src/components/Avatar.tsx), so a person
+// has the same colour on the phone widget as in the app.
+const AVATAR_COLORS = ['#18806a', '#b8426f', '#6f52b8', '#b4562c', '#2f6fa8', '#9b3d6a', '#2a7d4f', '#7a4fa0'];
+
+export function avatarColor(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
+export type TileStatus = 'none' | 'ideas' | 'partly' | 'bought';
+
+export interface WidgetPerson {
+  id: string;
+  name: string;
+  initial: string;
+  color: string;
+  status: TileStatus;
+}
+
+export interface WidgetGift {
+  id: string;
+  person_id: string;
+  status: string;
+}
+
+const STATUS_ORDER: Record<TileStatus, number> = { none: 0, ideas: 1, partly: 2, bought: 3 };
+
+/**
+ * The people who most need a gift: nobody-yet first, then ideas only, then partly bought,
+ * then done. A gift shared with several people counts for each of them.
+ */
+export function widgetPeople(
+  people: { id: string; name: string }[],
+  gifts: WidgetGift[],
+  extras: { gift_id: string; person_id: string }[],
+  limit = 6,
+): WidgetPerson[] {
+  const extraBy = new Map<string, string[]>();
+  for (const e of extras) extraBy.set(e.gift_id, [...(extraBy.get(e.gift_id) ?? []), e.person_id]);
+  const counts = new Map<string, { ideas: number; bought: number }>();
+  for (const g of gifts) {
+    for (const id of [g.person_id, ...(extraBy.get(g.id) ?? [])]) {
+      const c = counts.get(id) ?? { ideas: 0, bought: 0 };
+      if (g.status === 'idea') c.ideas++;
+      else c.bought++;
+      counts.set(id, c);
+    }
+  }
+  const tiles = people.map((p): WidgetPerson => {
+    const c = counts.get(p.id) ?? { ideas: 0, bought: 0 };
+    const status: TileStatus = c.ideas === 0 && c.bought === 0 ? 'none' : c.bought === 0 ? 'ideas' : c.ideas === 0 ? 'bought' : 'partly';
+    const first = p.name.trim().split(/\s+/)[0] ?? p.name;
+    return { id: p.id, name: first.slice(0, 12), initial: ([...first][0] ?? '?').toUpperCase(), color: avatarColor(p.name), status };
+  });
+  return tiles.sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || a.name.localeCompare(b.name)).slice(0, limit);
+}
+
 export interface WidgetSummary {
   name: string;
   days: number;
@@ -120,13 +178,16 @@ export interface WidgetSummary {
   leftCents: number;
   /** "$892", or "-$50" when over; empty when no budget is set. */
   leftText: string;
+  /** Up to six people who most need a gift. First names only. */
+  people: WidgetPerson[];
 }
 
-/** Everything the phone widget shows. No gift or person names, only counts and totals. */
+/** Everything the phone widget shows: totals, first names and who needs a gift. Never gift names. */
 export function widgetSummary(
   household: { name: string; budget: number | string },
   gifts: GiftRow[],
   days: number,
+  people: WidgetPerson[] = [],
 ): WidgetSummary {
   const hasBudget = Number(household.budget) > 0;
   const leftCents = leftToSpend(household.budget, gifts);
@@ -138,5 +199,6 @@ export function widgetSummary(
     hasBudget,
     leftCents,
     leftText: hasBudget ? `${leftCents < 0 ? '-' : ''}${dollars(leftCents)}` : '',
+    people,
   };
 }

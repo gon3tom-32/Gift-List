@@ -595,8 +595,14 @@ function WidgetSection() {
         </>
       )}
       <p className="muted small">
-        The link in the script is private to you. Anyone who has it can see your totals (days, open gifts, money left) but
-        never your gifts or people. iPhone refreshes widgets every so often, so the numbers can lag a little.
+        The medium widget shows your countdown and the six people who most need a gift, with a dot on each: pink for
+        ideas, yellow for some bought, a tick when it is sorted, and a ring when there is nothing yet. Tap a person to open
+        them.
+      </p>
+      <p className="muted small">
+        The link in the script is private to you. Anyone who has it can see your totals and first names, never your gifts.
+        If you set the widget up before, copy the script again and paste it over the old one to get this layout. iPhone
+        refreshes widgets every so often, so the numbers can lag a little.
       </p>
     </section>
   );
