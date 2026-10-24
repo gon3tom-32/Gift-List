@@ -6,7 +6,7 @@
 //   POST ... { kind: 'countdown' }        from the daily job (shared secret)
 //     Christmas countdown on milestone days.
 //   POST ... { kind: 'widget_link' }      a signed-in member gets their private phone-widget link
-//   GET  ?widget=<link token>             the widget's numbers (counts and money left, no names)
+//   GET  ?widget=<link token>             the widget's numbers (totals, first names, who needs a gift; never gift names)
 //
 // The VAPID private key, the shared push secret and the service role key only
 // exist here, in Supabase's own function environment, never in the app.
@@ -24,8 +24,10 @@ import {
   daysUntilChristmas,
   isMilestone,
   leftToSpend,
+  widgetPeople,
   widgetSummary,
   type GiftRow,
+  type WidgetGift,
   type Message,
 } from './rules.ts';
 
@@ -183,7 +185,7 @@ async function handleTest(req: Request): Promise<Response> {
   return reply({ delivered: await send(subs, { title: 'Test notification', body: `This is how the countdown looks: ${preview.title}. ${preview.body}` }) });
 }
 
-/** The phone widget's numbers. Anyone holding a genuine link can read these totals, never gift names. */
+/** The phone widget's numbers. Anyone holding a genuine link can read totals and first names, never gift names. */
 async function handleWidget(token: string | null): Promise<Response> {
   if (!SUPABASE_URL || !SERVICE_KEY || !PUSH_SECRET) return reply({ error: 'Not set up yet.' }, 500);
   const userId = await checkWidgetToken(token, PUSH_SECRET);
@@ -194,8 +196,14 @@ async function handleWidget(token: string | null): Promise<Response> {
     `households?id=eq.${mine.household_id}&select=name,budget`,
   );
   if (!household) return reply({ error: 'No list found' }, 404);
-  const gifts = await giftsOf(mine.household_id);
-  const body = JSON.stringify(widgetSummary(household, gifts, daysUntilChristmas(new Date())));
+  const hid = mine.household_id;
+  const [gifts, people, extras] = await Promise.all([
+    getJson<(GiftRow & WidgetGift)[]>(`gifts?household_id=eq.${hid}&select=id,person_id,status,estimate,paid`),
+    getJson<{ id: string; name: string }[]>(`people?household_id=eq.${hid}&select=id,name`),
+    getJson<{ gift_id: string; person_id: string }[]>(`gift_recipients?household_id=eq.${hid}&select=gift_id,person_id`),
+  ]);
+  const tiles = widgetPeople(people, gifts, extras);
+  const body = JSON.stringify(widgetSummary(household, gifts, daysUntilChristmas(new Date()), tiles));
   return new Response(body, { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 }
 
