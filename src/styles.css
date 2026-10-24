@@ -960,6 +960,7 @@ details.more[open] summary {
   padding: 24px 8px 14px;
   display: grid;
   justify-items: center;
+  align-content: start; /* extra height from a taller neighbour goes at the bottom, not into the rows */
   gap: 4px;
   cursor: pointer;
   transition: transform 0.12s ease;
@@ -991,6 +992,7 @@ details.more[open] summary {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
+  align-items: center;
   gap: 4px;
 }
 .status-none {
