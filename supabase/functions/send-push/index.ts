@@ -5,6 +5,8 @@
 //     Tells the partner what changed, and warns both when the budget is passed.
 //   POST ... { kind: 'countdown' }        from the daily job (shared secret)
 //     Christmas countdown on milestone days.
+//   POST ... { kind: 'widget_link' }      a signed-in member gets their private phone-widget link
+//   GET  ?widget=<link token>             the widget's numbers (counts and money left, no names)
 //
 // The VAPID private key, the shared push secret and the service role key only
 // exist here, in Supabase's own function environment, never in the app.
@@ -13,6 +15,7 @@
 
 import webpush from 'npm:web-push@3.6.7';
 import { sameSecret } from './auth.ts';
+import { checkWidgetToken, makeWidgetToken } from './widgetToken.ts';
 import {
   activityMessage,
   budgetAction,
@@ -21,6 +24,7 @@ import {
   daysUntilChristmas,
   isMilestone,
   leftToSpend,
+  widgetSummary,
   type GiftRow,
   type Message,
 } from './rules.ts';
@@ -179,8 +183,34 @@ async function handleTest(req: Request): Promise<Response> {
   return reply({ delivered: await send(subs, { title: 'Test notification', body: `This is how the countdown looks: ${preview.title}. ${preview.body}` }) });
 }
 
+/** The phone widget's numbers. Anyone holding a genuine link can read these totals, never gift names. */
+async function handleWidget(token: string | null): Promise<Response> {
+  if (!SUPABASE_URL || !SERVICE_KEY || !PUSH_SECRET) return reply({ error: 'Not set up yet.' }, 500);
+  const userId = await checkWidgetToken(token, PUSH_SECRET);
+  if (!userId) return reply({ error: 'Not allowed' }, 401);
+  const [mine] = await getJson<{ household_id: string }[]>(`household_members?user_id=eq.${userId}&select=household_id`);
+  if (!mine) return reply({ error: 'No list found' }, 404);
+  const [household] = await getJson<{ name: string; budget: number | string }[]>(
+    `households?id=eq.${mine.household_id}&select=name,budget`,
+  );
+  if (!household) return reply({ error: 'No list found' }, 404);
+  const gifts = await giftsOf(mine.household_id);
+  const body = JSON.stringify(widgetSummary(household, gifts, daysUntilChristmas(new Date())));
+  return new Response(body, { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+}
+
+/** A signed-in member's own private widget link. */
+async function handleWidgetLink(req: Request): Promise<Response> {
+  const me = await callerId(req);
+  if (!me) return reply({ error: 'Sign in first' }, 401);
+  if (!PUSH_SECRET) return reply({ error: 'Not set up yet.' }, 500);
+  const token = await makeWidgetToken(me, PUSH_SECRET);
+  return reply({ url: `${SUPABASE_URL}/functions/v1/send-push?widget=${token}` });
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+  if (req.method === 'GET') return handleWidget(new URL(req.url).searchParams.get('widget'));
   if (req.method !== 'POST') return reply({ error: 'Use POST' }, 405);
   const missing = [
     !VAPID_PUBLIC && 'VAPID_PUBLIC_KEY',
@@ -198,6 +228,7 @@ Deno.serve(async (req) => {
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
     if (body.kind === 'test') return await handleTest(req);
+    if (body.kind === 'widget_link') return await handleWidgetLink(req);
 
     if (body.kind === 'activity' || body.kind === 'countdown') {
       // Only the database (trigger and daily job) knows this secret.

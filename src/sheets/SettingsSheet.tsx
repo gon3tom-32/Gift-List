@@ -9,9 +9,10 @@ import { MoneyField, TextField } from '../components/Fields';
 import { Avatar } from '../components/Avatar';
 import { PhotoPicker } from '../components/PhotoPicker';
 import { deletePhoto, uploadPhoto } from '../lib/photos';
+import { buildWidgetScript, requestWidgetLink } from '../lib/widget';
 import { disablePush, enablePush, pushState, sendTestPush, type PushState } from '../lib/push';
 
-export type SettingsView = 'menu' | 'list' | 'people' | 'notifications' | 'shortcut' | 'password';
+export type SettingsView = 'menu' | 'list' | 'people' | 'notifications' | 'shortcut' | 'widget' | 'password';
 
 const PAGE_TITLES: Record<SettingsView, string> = {
   menu: 'Settings',
@@ -19,6 +20,7 @@ const PAGE_TITLES: Record<SettingsView, string> = {
   people: "Who's on the list",
   notifications: 'Notifications',
   shortcut: 'Add ideas from any app',
+  widget: 'Phone widget',
   password: 'Sign-in and password',
 };
 
@@ -161,6 +163,7 @@ export function SettingsSheet({ onClose, view = 'menu' }: { onClose: () => void;
     notifications:
       pushOn === 'on' ? 'On for this phone' : pushOn === 'needs-install' ? 'Needs the Home Screen app' : 'Off for this phone',
     shortcut: 'Share a gift from any shop',
+    widget: 'Countdown on your Home Screen',
     password: 'Sign in with email and password',
   };
   const rows: { id: Exclude<SettingsView, 'menu'>; icon: IconName }[] = [
@@ -168,6 +171,7 @@ export function SettingsSheet({ onClose, view = 'menu' }: { onClose: () => void;
     { id: 'people', icon: 'users' },
     { id: 'notifications', icon: 'sparkle' },
     { id: 'shortcut', icon: 'link' },
+    { id: 'widget', icon: 'star' },
     { id: 'password', icon: 'edit' },
   ];
 
@@ -414,6 +418,8 @@ export function SettingsSheet({ onClose, view = 'menu' }: { onClose: () => void;
       {page === 'notifications' && <NotificationsSection householdId={household.id} userId={me} />}
 
       {page === 'shortcut' && <ShareShortcutHelp />}
+
+      {page === 'widget' && <WidgetSection />}
     </Sheet>
   );
 }
@@ -530,6 +536,68 @@ function ShareShortcutHelp() {
       <button type="button" className="btn small" onClick={() => void copy()}>
         {copied ? 'Copied!' : 'Copy the Gift-List address'}
       </button>
+    </section>
+  );
+}
+
+/** Sets up the Scriptable widget: a private link plus the script to paste into Scriptable. */
+function WidgetSection() {
+  const { toast } = useApp();
+  const [script, setScript] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function make() {
+    setBusy(true);
+    try {
+      const link = await requestWidgetLink();
+      setScript(buildWidgetScript(link, `${window.location.origin}${import.meta.env.BASE_URL}`));
+    } catch (err) {
+      toast(errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copy() {
+    if (!script) return;
+    try {
+      await navigator.clipboard.writeText(script);
+      toast('Copied. Paste it into Scriptable.');
+    } catch {
+      toast('Could not copy. Press and hold the box, then choose Select All and Copy.');
+    }
+  }
+
+  return (
+    <section className="stack">
+      <p className="muted small">
+        Put your Christmas countdown, gifts still open and money left on your Home Screen or Lock Screen, using the free
+        Scriptable app.
+      </p>
+      <ol className="steps small">
+        <li>Install <strong>Scriptable</strong> from the App Store (free).</li>
+        <li>Tap <strong>Make my widget link</strong> below, then <strong>Copy script</strong>.</li>
+        <li>In Scriptable tap <strong>+</strong>, paste the script, and name it Gift-List.</li>
+        <li>On your Home Screen touch and hold, tap <strong>+</strong>, pick <strong>Scriptable</strong>, add a widget, then tap it and choose the Gift-List script.</li>
+      </ol>
+      <button type="button" className="btn primary" disabled={busy} onClick={() => void make()}>
+        {busy ? 'Making…' : script ? 'Make a new link' : 'Make my widget link'}
+      </button>
+      {script && (
+        <>
+          <label className="visually-hidden" htmlFor="widget-script">
+            Widget script
+          </label>
+          <textarea id="widget-script" className="code-box" readOnly value={script} rows={8} onFocus={(e) => e.currentTarget.select()} />
+          <button type="button" className="btn" onClick={() => void copy()}>
+            Copy script
+          </button>
+        </>
+      )}
+      <p className="muted small">
+        The link in the script is private to you. Anyone who has it can see your totals (days, open gifts, money left) but
+        never your gifts or people. iPhone refreshes widgets every so often, so the numbers can lag a little.
+      </p>
     </section>
   );
 }
