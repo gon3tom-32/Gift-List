@@ -3,6 +3,7 @@ import { formatCents, leftToSpend, type Totals } from '../lib/money';
 import type { Household } from '../lib/types';
 import { Icon } from './Icon';
 import { Avatar } from './Avatar';
+import type { SettingsView } from '../sheets/SettingsSheet';
 
 export function Header({
   household,
@@ -16,7 +17,7 @@ export function Header({
   openCount: number;
   /** Everyone on the list, across all groups. */
   peopleCount: number;
-  onSettings: () => void;
+  onSettings: (view: SettingsView) => void;
 }) {
   const left = leftToSpend(household.budget || null, totals);
   const days = daysUntilChristmas();
@@ -26,7 +27,7 @@ export function Header({
         <button
           type="button"
           className={`header-photo${household.photo_path ? '' : ' empty'}`}
-          onClick={onSettings}
+          onClick={() => onSettings('list')}
           aria-label={household.photo_path ? 'Change our photo' : 'Add our photo'}
         >
           {household.photo_path ? (
@@ -55,9 +56,6 @@ export function Header({
             </span>
           </p>
         </div>
-        <button type="button" className="icon-btn on-dark" onClick={onSettings} aria-label="List settings and partner">
-          <Icon name="settings" />
-        </button>
       </div>
 
       <dl className="totals">
@@ -77,7 +75,7 @@ export function Header({
           <dt>Left</dt>
           <dd>
             {left === null ? (
-              <button type="button" className="link-btn" onClick={onSettings}>
+              <button type="button" className="link-btn" onClick={() => onSettings('list')}>
                 Set budget
               </button>
             ) : (
