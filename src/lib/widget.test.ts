@@ -67,12 +67,15 @@ describe('the widget script when it runs', () => {
       setFont() {},
       setTextAlignedCenter() {},
       drawTextInRect: (t: string) => draws.push(t),
+      fillRect() {},
+      addPath() {},
+      fillPath() {},
       setStrokeColor() {},
       setLineWidth() {},
       strokeEllipse() {},
       getImage: () => ({}),
     });
-    const names = ['config', 'Request', 'ListWidget', 'Font', 'Color', 'Size', 'Rect', 'DrawContext', 'Script'];
+    const names = ['config', 'Request', 'ListWidget', 'Font', 'Color', 'Size', 'Rect', 'DrawContext', 'Script', 'Path', 'Point'];
     const args = [
       { widgetFamily: family, runsInWidget: true },
       function () {
@@ -89,6 +92,10 @@ describe('the widget script when it runs', () => {
         return ctx();
       },
       { setWidget() {}, complete() {} },
+      function () {
+        return { addRoundedRect() {}, move() {}, addLine() {}, closeSubpath() {} };
+      },
+      function () {},
     ];
     const fn = new AsyncFunction(...names, buildWidgetScript('https://x.test/l?widget=a.b', 'https://site.test/Gift-List/')) as (
       ...a: unknown[]
