@@ -11,7 +11,7 @@ export function TopBar({ onSettings }: { onSettings: () => void }) {
           <span className="top-bar-name">Gift-List</span>
         </a>
         <button type="button" className="icon-btn top-bar-btn" onClick={onSettings} aria-label="Settings">
-          <Icon name="settings" size={22} />
+          <Icon name="menu" size={24} />
         </button>
       </div>
     </div>
