@@ -108,7 +108,7 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
         return (
           <section key={group.id} className="group" aria-labelledby={`group-${group.id}`}>
             <div className="group-head">
-              <span className={`group-icon icon-${group.icon}`} aria-hidden="true">
+              <span className={`group-icon icon-${group.icon}`} data-tone={String(groups.indexOf(group) % 5)} aria-hidden="true">
                 <Icon name={group.icon} />
               </span>
               <div className="family-title">

@@ -1,6 +1,7 @@
 import { useSignedUrl } from '../lib/photos';
 
-const COLORS = ['#c8102e', '#1f9e86', '#d97706', '#7c3aed', '#2563eb', '#db2777', '#15803d', '#b45309'];
+// Deeper tones that keep white initials readable and sit well with the mint and pastel look.
+const COLORS = ['#18806a', '#b8426f', '#6f52b8', '#b4562c', '#2f6fa8', '#9b3d6a', '#2a7d4f', '#7a4fa0'];
 
 function hash(text: string): number {
   let h = 0;
