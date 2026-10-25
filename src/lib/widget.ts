@@ -41,39 +41,38 @@ async function load() {
   }
 }
 
-// A coloured circle with the person's initial and a small status badge.
-function avatar(person) {
-  const size = 88;
-  const ctx = new DrawContext();
-  ctx.size = new Size(size, size);
-  ctx.opaque = false;
-  ctx.respectScreenScale = true;
+// A coloured circle with the person's initial and a small status badge, drawn into ctx.
+function drawAvatar(ctx, person, x, y, d) {
   ctx.setFillColor(new Color(person.color));
-  ctx.fillEllipse(new Rect(0, 0, size, size));
+  ctx.fillEllipse(new Rect(x, y, d, d));
+  // A white ring, so a circle is still visible when its colour matches the background.
+  ctx.setStrokeColor(new Color("#ffffff", 0.9));
+  ctx.setLineWidth(2);
+  ctx.strokeEllipse(new Rect(x + 1, y + 1, d - 2, d - 2));
   ctx.setTextColor(Color.white());
-  ctx.setFont(Font.boldRoundedSystemFont(38));
+  ctx.setFont(Font.boldRoundedSystemFont(d * 0.44));
   ctx.setTextAlignedCenter();
-  ctx.drawTextInRect(person.initial, new Rect(0, 20, size, 48));
-  const d = 32;
-  const x = size - d;
-  const y = size - d;
+  ctx.drawTextInRect(person.initial, new Rect(x, y + d * 0.22, d, d * 0.56));
+  const b = d * 0.36;
+  const bx = x + d - b;
+  const by = y + d - b;
   if (person.status === "none") {
     ctx.setFillColor(new Color(MINT));
-    ctx.fillEllipse(new Rect(x, y, d, d));
+    ctx.fillEllipse(new Rect(bx, by, b, b));
     ctx.setStrokeColor(Color.white());
-    ctx.setLineWidth(4);
-    ctx.strokeEllipse(new Rect(x + 3, y + 3, d - 6, d - 6));
+    ctx.setLineWidth(b * 0.12);
+    ctx.strokeEllipse(new Rect(bx + b * 0.1, by + b * 0.1, b * 0.8, b * 0.8));
   } else {
     const fill = person.status === "ideas" ? "#ffd6e4" : person.status === "partly" ? "#fff1b8" : "#bff0e3";
     ctx.setFillColor(new Color(fill));
-    ctx.fillEllipse(new Rect(x, y, d, d));
+    ctx.fillEllipse(new Rect(bx, by, b, b));
     if (person.status === "bought") {
       ctx.setTextColor(new Color("#0f5e4e"));
-      ctx.setFont(Font.boldSystemFont(22));
-      ctx.drawTextInRect("✓", new Rect(x, y + 3, d, d));
+      ctx.setFont(Font.boldSystemFont(b * 0.7));
+      ctx.setTextAlignedCenter();
+      ctx.drawTextInRect("\u2713", new Rect(bx, by + b * 0.08, b, b));
     }
   }
-  return ctx.getImage();
 }
 
 // The app's tag logo as a small mint tile.
@@ -108,25 +107,30 @@ function logo(px) {
   return ctx.getImage();
 }
 
-// A red and white candy-cane stripe for the bottom edge.
+// A red and white candy-cane stripe, drawn into ctx along the bottom edge.
+function drawStripe(ctx, width, top, height) {
+  ctx.setFillColor(Color.white());
+  ctx.fillRect(new Rect(0, top, width, height));
+  ctx.setFillColor(new Color("#d94b5c"));
+  for (let x = -height; x < width + height; x += height * 2) {
+    const band = new Path();
+    band.move(new Point(x, top + height));
+    band.addLine(new Point(x + height, top + height));
+    band.addLine(new Point(x + height * 2, top));
+    band.addLine(new Point(x + height, top));
+    band.closeSubpath();
+    ctx.addPath(band);
+    ctx.fillPath();
+  }
+}
+
+// A stripe as its own image, for the small widget.
 function stripe(width, height) {
   const ctx = new DrawContext();
   ctx.size = new Size(width, height);
   ctx.opaque = true;
   ctx.respectScreenScale = true;
-  ctx.setFillColor(Color.white());
-  ctx.fillRect(new Rect(0, 0, width, height));
-  ctx.setFillColor(new Color("#d94b5c"));
-  for (let x = -height; x < width + height; x += height * 2) {
-    const band = new Path();
-    band.move(new Point(x, height));
-    band.addLine(new Point(x + height, height));
-    band.addLine(new Point(x + height * 2, 0));
-    band.addLine(new Point(x + height, 0));
-    band.closeSubpath();
-    ctx.addPath(band);
-    ctx.fillPath();
-  }
+  drawStripe(ctx, width, 0, height);
   return ctx.getImage();
 }
 
@@ -140,6 +144,68 @@ function title(stack, size) {
   row.addSpacer(5);
   add(row, "Gift-List", size, "semibold", new Color("#ffffff", 0.92));
   return row;
+}
+
+// iPhone medium widget sizes in points, by the phone's screen height.
+function mediumSize() {
+  const screen = Device.screenSize();
+  const h = Math.max(screen.width, screen.height);
+  const table = { 932: [364, 170], 926: [364, 170], 896: [360, 169], 852: [338, 158], 844: [338, 158], 812: [329, 155], 736: [348, 157], 667: [322, 150], 568: [292, 141] };
+  return table[h] || [338, 158];
+}
+
+// The whole medium widget as one picture, so nothing can shift or clip.
+function drawMedium(data, people, open, left, days) {
+  const size = mediumSize();
+  const W = size[0];
+  const H = size[1];
+  const LW = 114;
+  const bar = 8;
+  const ctx = new DrawContext();
+  ctx.size = new Size(W, H);
+  ctx.opaque = true;
+  ctx.respectScreenScale = true;
+  ctx.setFillColor(new Color(MINT));
+  ctx.fillRect(new Rect(0, 0, W, H));
+  ctx.setFillColor(new Color("#126652"));
+  ctx.fillRect(new Rect(0, 0, LW, H - bar));
+  // Left panel: logo and title, the countdown, gifts open, money left
+  ctx.drawImageInRect(logo(44), new Rect(12, 11, 20, 20));
+  ctx.setTextAlignedLeft();
+  ctx.setFont(Font.semiboldRoundedSystemFont(13));
+  ctx.setTextColor(new Color("#ffffff", 0.92));
+  ctx.drawTextInRect("Gift-List", new Rect(37, 13, LW - 42, 18));
+  ctx.setFont(Font.boldRoundedSystemFont(40));
+  ctx.setTextColor(Color.white());
+  ctx.drawTextInRect(String(data.days), new Rect(12, 38, LW - 16, 46));
+  ctx.setFont(Font.semiboldRoundedSystemFont(11));
+  ctx.setTextColor(new Color("#ffffff", 0.9));
+  ctx.drawTextInRect(data.days === 0 ? "Merry Christmas!" : "days to Christmas", new Rect(12, 85, LW - 18, 16));
+  ctx.setFont(Font.semiboldRoundedSystemFont(13));
+  ctx.setTextColor(Color.white());
+  ctx.drawTextInRect(open, new Rect(12, 104, LW - 14, 17));
+  if (left) {
+    ctx.setTextColor(data.leftCents < 0 ? new Color("#ffd6e4") : Color.white());
+    ctx.drawTextInRect(left, new Rect(12, 121, LW - 14, 17));
+  }
+  // Right: the six people who most need a gift, in a 3 x 2 grid
+  const gx = LW + 6;
+  const colW = (W - gx - 6) / 3;
+  const rowH = (H - bar - 8) / 2;
+  const d = 40;
+  for (let i = 0; i < 6 && i < people.length; i++) {
+    const col = i % 3;
+    const row = Math.floor(i / 3);
+    const cx = gx + col * colW + (colW - d) / 2;
+    const cy = 8 + row * rowH + 6;
+    drawAvatar(ctx, people[i], cx, cy, d);
+    ctx.setTextAlignedCenter();
+    ctx.setFont(Font.semiboldRoundedSystemFont(11));
+    ctx.setTextColor(Color.white());
+    ctx.drawTextInRect(people[i].name, new Rect(gx + col * colW, cy + d + 3, colW, 15));
+  }
+  drawStripe(ctx, W, H - bar, bar);
+  return { image: ctx.getImage(), W: W, H: H, LW: LW, bar: bar, gx: gx, colW: colW, rowH: rowH };
 }
 
 const data = await load();
@@ -172,49 +238,31 @@ if (family.indexOf("accessory") === 0) {
     add(w, open, 12, "semibold");
   }
 } else if (family === "medium" && data && people.length > 0) {
-  // Left: the countdown on a deeper mint panel. Right: the people who most need a gift.
-  w.backgroundColor = new Color(MINT);
+  const m = drawMedium(data, people, open, left, days);
+  w.backgroundImage = m.image;
   w.setPadding(0, 0, 0, 0);
   w.spacing = 0;
+  // Invisible tap targets over each person; tapping anywhere else opens the site.
   const row = w.addStack();
   row.layoutHorizontally();
-  row.size = new Size(0, 140);
-  const side = row.addStack();
-  side.layoutVertically();
-  side.backgroundColor = new Color("#126652");
-  side.size = new Size(116, 140);
-  side.setPadding(10, 11, 8, 8);
-  title(side, 12);
-  side.addSpacer();
-  add(side, String(data.days), 36, "bold", Color.white());
-  add(side, data.days === 0 ? "Merry Christmas!" : "days to Christmas", 12, "semibold", new Color("#ffffff", 0.9));
-  side.addSpacer(5);
-  add(side, open, 13, "semibold", Color.white());
-  if (left) add(side, left, 13, "semibold", data.leftCents < 0 ? new Color("#ffd6e4") : Color.white());
+  row.size = new Size(m.W, m.H - m.bar);
+  const pad = row.addStack();
+  pad.size = new Size(m.gx, m.H - m.bar);
   const grid = row.addStack();
   grid.layoutVertically();
-  grid.setPadding(10, 8, 4, 4);
+  grid.size = new Size(m.W - m.gx, m.H - m.bar);
+  grid.setPadding(8, 0, 0, 0);
   for (let r = 0; r < 2; r++) {
     const line = grid.addStack();
     line.layoutHorizontally();
+    line.size = new Size(m.W - m.gx, m.rowH);
     for (let c = 0; c < 3; c++) {
       const person = people[r * 3 + c];
       const tile = line.addStack();
-      tile.layoutVertically();
-      tile.centerAlignContent();
-      tile.size = new Size(58, 60);
-      if (person) {
-        tile.url = SITE + "#/person/" + person.id;
-        const img = tile.addImage(avatar(person));
-        img.imageSize = new Size(38, 38);
-        tile.addSpacer(3);
-        add(tile, person.name, 11, "semibold", Color.white());
-      }
+      tile.size = new Size(m.colW, m.rowH);
+      if (person) tile.url = SITE + "#/person/" + person.id;
     }
-    if (r === 0) grid.addSpacer(4);
   }
-  const bar = w.addImage(stripe(400, 8));
-  bar.imageSize = new Size(400, 8);
 } else {
   w.backgroundColor = new Color(MINT);
   w.setPadding(14, 14, 0, 14);
