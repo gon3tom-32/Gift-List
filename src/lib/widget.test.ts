@@ -68,6 +68,8 @@ describe('the widget script when it runs', () => {
       setTextAlignedCenter() {},
       drawTextInRect: (t: string) => draws.push(t),
       fillRect() {},
+      drawImageInRect() {},
+      setTextAlignedLeft() {},
       addPath() {},
       fillPath() {},
       setStrokeColor() {},
@@ -75,7 +77,7 @@ describe('the widget script when it runs', () => {
       strokeEllipse() {},
       getImage: () => ({}),
     });
-    const names = ['config', 'Request', 'ListWidget', 'Font', 'Color', 'Size', 'Rect', 'DrawContext', 'Script', 'Path', 'Point'];
+    const names = ['config', 'Request', 'ListWidget', 'Font', 'Color', 'Size', 'Rect', 'DrawContext', 'Script', 'Path', 'Point', 'Device'];
     const args = [
       { widgetFamily: family, runsInWidget: true },
       function () {
@@ -96,6 +98,7 @@ describe('the widget script when it runs', () => {
         return { addRoundedRect() {}, move() {}, addLine() {}, closeSubpath() {} };
       },
       function () {},
+      { screenSize: () => ({ width: 390, height: 844 }) },
     ];
     const fn = new AsyncFunction(...names, buildWidgetScript('https://x.test/l?widget=a.b', 'https://site.test/Gift-List/')) as (
       ...a: unknown[]
@@ -121,10 +124,12 @@ describe('the widget script when it runs', () => {
     const out = await run('medium', sample);
     expect(out.urls).toContain('https://site.test/Gift-List/#/person/p1');
     expect(out.urls).toContain('https://site.test/Gift-List/#/person/p4');
-    expect(out.texts).toContain('63');
-    expect(out.texts).toContain('5 gifts open');
-    expect(out.texts).toContain('$892 left');
-    expect(out.texts).toContain('Andrew');
+    // The medium widget is drawn as one picture, so its words are drawn text rather than stack text.
+    expect(out.draws).toContain('Gift-List');
+    expect(out.draws).toContain('63');
+    expect(out.draws).toContain('5 gifts open');
+    expect(out.draws).toContain('$892 left');
+    expect(out.draws).toContain('Andrew');
     expect(out.draws).toContain('A');
     expect(out.draws).toContain('✓');
   });
