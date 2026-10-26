@@ -58,6 +58,7 @@ A playful, shared Christmas gift list and budget app for a couple. Both partners
 - Write tests for money calculations and status transitions (`npm test`).
 - Commit in small, clearly described steps.
 - Ask before adding dependencies beyond React, Supabase JS, and date-fns (Vitest is the approved dev test runner).
+- Document every feature we add in `docs/` (one short markdown file per feature: what it does, how it works, where the code lives, the rules and the pitfalls) and list it in `docs/README.md`. Update the file when the feature changes, in the same PR.
 
 ## Out of scope for now
 
