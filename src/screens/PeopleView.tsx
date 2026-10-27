@@ -3,6 +3,7 @@ import { useApp } from '../lib/context';
 import { routeHref } from '../lib/route';
 import { errorText } from '../lib/supabase';
 import { recipientIds } from '../lib/recipients';
+import { STARTERS } from '../lib/starters';
 import { isOpen } from '../lib/status';
 import type { GroupIcon, Person } from '../lib/types';
 import { formatCents, type Totals } from '../lib/money';
@@ -11,13 +12,6 @@ import { PersonCard } from '../components/Cards';
 import { BudgetBar } from '../components/BudgetBar';
 import type { HomeTools } from './Home';
 
-const STARTERS: { name: string; icon: GroupIcon }[] = [
-  { name: 'Our family', icon: 'gift' },
-  { name: 'Kids', icon: 'star' },
-  { name: 'Pets', icon: 'paw' },
-  { name: 'Coworkers', icon: 'briefcase' },
-  { name: 'Friends', icon: 'heart' },
-];
 
 export function PeopleView({ tools }: { tools: HomeTools }) {
   const { data, toast } = useApp();

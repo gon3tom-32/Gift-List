@@ -3,7 +3,7 @@ import { errorText, supabase } from '../lib/supabase';
 import { Icon } from '../components/Icon';
 import { countdownText } from '../lib/christmas';
 
-type Mode = 'password' | 'link';
+type Mode = 'password' | 'link' | 'new';
 
 export function SignIn({ notice }: { notice?: string | null }) {
   // A failed email link means the person is mid email-link sign-in.
@@ -102,6 +102,9 @@ export function SignIn({ notice }: { notice?: string | null }) {
               <button type="button" className="chip" aria-pressed={mode === 'link'} onClick={() => switchTo('link')}>
                 Email link
               </button>
+              <button type="button" className="chip" aria-pressed={mode === 'new'} onClick={() => switchTo('new')}>
+                New here?
+              </button>
             </div>
 
             {notice && !error && (
@@ -131,6 +134,18 @@ export function SignIn({ notice }: { notice?: string | null }) {
                   First time, or forgot your password? Get an email link instead
                 </button>
               </form>
+            ) : mode === 'new' ? (
+              <form onSubmit={sendLink} className="stack">
+                <p>
+                  <strong>Make your own gift list.</strong> It's free. Enter your email and we'll send a link; tap it and
+                  you can start your list.
+                </p>
+                {emailField}
+                {errorLine}
+                <button className="btn primary big" disabled={state === 'sending'}>
+                  {state === 'sending' ? 'Sending…' : 'Email me a link to get started'}
+                </button>
+              </form>
             ) : (
               <form onSubmit={sendLink} className="stack">
                 {emailField}
@@ -138,12 +153,35 @@ export function SignIn({ notice }: { notice?: string | null }) {
                 <button className="btn primary big" disabled={state === 'sending'}>
                   {state === 'sending' ? 'Sending…' : 'Email me a sign-in link'}
                 </button>
-                <p className="muted small">After you're in, you can set a password in ⚙ settings.</p>
+                <p className="muted small">After you're in, you can set a password in the menu.</p>
               </form>
             )}
+            <p className="muted small privacy-line">Your list is private. Only the person you add can see it.</p>
           </>
         )}
       </div>
+
+      <section className="how-it-works" aria-label="How Gift-List works">
+        <h2 className="h4">How it works</h2>
+        <ol>
+          <li>
+            <Icon name="users" size={22} />
+            <span>Add the people you're buying for</span>
+          </li>
+          <li>
+            <Icon name="gift" size={22} />
+            <span>Collect ideas, with pictures and prices</span>
+          </li>
+          <li>
+            <Icon name="link" size={22} />
+            <span>Share a gift from any shop in two taps</span>
+          </li>
+          <li>
+            <Icon name="check" size={22} />
+            <span>Track what's bought, and what's left to spend</span>
+          </li>
+        </ol>
+      </section>
     </main>
   );
 }
