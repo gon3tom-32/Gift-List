@@ -5,9 +5,9 @@ import { countdownText } from '../lib/christmas';
 
 type Mode = 'password' | 'link' | 'new';
 
-export function SignIn({ notice }: { notice?: string | null }) {
+export function SignIn({ notice, embedded }: { notice?: string | null; embedded?: boolean }) {
   // A failed email link means the person is mid email-link sign-in.
-  const [mode, setMode] = useState<Mode>(notice ? 'link' : 'password');
+  const [mode, setMode] = useState<Mode>(notice ? 'link' : embedded ? 'new' : 'password');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
@@ -69,8 +69,9 @@ export function SignIn({ notice }: { notice?: string | null }) {
     </p>
   );
 
+  const Wrap = embedded ? 'div' : 'main';
   return (
-    <main className="center-screen">
+    <Wrap className={embedded ? 'signin-embedded' : 'center-screen'}>
       <div className="card narrow signin">
         <div className="signin-badge" aria-hidden="true">
           <Icon name="gift" size={40} />
@@ -161,27 +162,29 @@ export function SignIn({ notice }: { notice?: string | null }) {
         )}
       </div>
 
-      <section className="how-it-works" aria-label="How Gift-List works">
-        <h2 className="h4">How it works</h2>
-        <ol>
-          <li>
-            <Icon name="users" size={22} />
-            <span>Add the people you're buying for</span>
-          </li>
-          <li>
-            <Icon name="gift" size={22} />
-            <span>Collect ideas, with pictures and prices</span>
-          </li>
-          <li>
-            <Icon name="link" size={22} />
-            <span>Share a gift from any shop in two taps</span>
-          </li>
-          <li>
-            <Icon name="check" size={22} />
-            <span>Track what's bought, and what's left to spend</span>
-          </li>
-        </ol>
-      </section>
-    </main>
+      {!embedded && (
+        <section className="how-it-works" aria-label="How Gift-List works">
+          <h2 className="h4">How it works</h2>
+          <ol>
+            <li>
+              <Icon name="users" size={22} />
+              <span>Add the people you're buying for</span>
+            </li>
+            <li>
+              <Icon name="gift" size={22} />
+              <span>Collect ideas, with pictures and prices</span>
+            </li>
+            <li>
+              <Icon name="link" size={22} />
+              <span>Share a gift from any shop in two taps</span>
+            </li>
+            <li>
+              <Icon name="check" size={22} />
+              <span>Track what's bought, and what's left to spend</span>
+            </li>
+          </ol>
+        </section>
+      )}
+    </Wrap>
   );
 }

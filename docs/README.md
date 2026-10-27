@@ -5,6 +5,7 @@ One short file per feature: what it does, how it works, where the code lives, th
 | Feature | File |
 |---|---|
 | Share a link from any site into the app (iPhone Shortcut, deep link, link preview) | [share-from-any-site.md](share-from-any-site.md) |
+| Landing page for signed-out visitors (real screens, made-up family) | [landing-page.md](landing-page.md) |
 | Sign-up for anyone, separate lists, per-list limits, sign-in email setup | [sign-up-and-limits.md](sign-up-and-limits.md) |
 
 ## Still to write up
