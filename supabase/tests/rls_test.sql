@@ -487,6 +487,90 @@ begin
 end $$;
 reset role;
 
+-- Caps per list, and one list per person (run as Mallory, on her own list)
+set local role authenticated;
+select set_config('request.jwt.claims',
+  json_build_object('sub', (select v from t_ids where k = 'mallory'),
+                    'email', 'mallory@rls-test.example', 'role', 'authenticated')::text, true);
+
+do $$
+declare ok boolean := false;
+begin
+  begin
+    perform create_household('Second list');
+  exception when others then ok := true;
+  end;
+  if not ok then raise exception 'FAIL: a person made a second list'; end if;
+end $$;
+
+with g as (
+  insert into gift_groups (household_id, name, icon)
+  select v, 'Cap test', 'gift' from t_ids where k = 'evil_home'
+  returning id
+) insert into t_ids select 'cap_group', id from g;
+
+-- groups: 30 allowed, the 31st is refused
+insert into gift_groups (household_id, name, icon)
+select (select v from t_ids where k = 'evil_home'), 'Group ' || i, 'gift'
+from generate_series(1, 30 - (select count(*) from gift_groups where household_id = (select v from t_ids where k = 'evil_home'))::int) i;
+do $$
+declare ok boolean := false;
+begin
+  begin
+    insert into gift_groups (household_id, name, icon)
+    select (select v from t_ids where k = 'evil_home'), 'One too many', 'gift';
+  exception when others then ok := true;
+  end;
+  if not ok then raise exception 'FAIL: more than 30 groups allowed'; end if;
+end $$;
+
+-- people: 300 allowed, the 301st is refused
+insert into people (household_id, group_id, name)
+select (select v from t_ids where k = 'evil_home'), (select v from t_ids where k = 'cap_group'), 'Person ' || i
+from generate_series(1, 300 - (select count(*) from people where household_id = (select v from t_ids where k = 'evil_home'))::int) i;
+do $$
+declare ok boolean := false;
+begin
+  begin
+    insert into people (household_id, group_id, name)
+    select (select v from t_ids where k = 'evil_home'), (select v from t_ids where k = 'cap_group'), 'One too many';
+  exception when others then
+    ok := position('This list is full' in sqlerrm) > 0;
+  end;
+  if not ok then raise exception 'FAIL: more than 300 people allowed, or the message is wrong'; end if;
+end $$;
+
+-- gifts: 2,000 allowed, the 2,001st is refused
+insert into gifts (household_id, person_id, name)
+select (select v from t_ids where k = 'evil_home'), (select id from people where name = 'Person 1' limit 1), 'Gift ' || i
+from generate_series(1, 2000 - (select count(*) from gifts where household_id = (select v from t_ids where k = 'evil_home'))::int) i;
+do $$
+declare ok boolean := false;
+begin
+  begin
+    insert into gifts (household_id, person_id, name)
+    select (select v from t_ids where k = 'evil_home'), (select id from people where name = 'Person 1'), 'One too many';
+  exception when others then ok := true;
+  end;
+  if not ok then raise exception 'FAIL: more than 2000 gifts allowed'; end if;
+end $$;
+
+-- photos: 200 gifts may have one, the 201st may not
+update gifts set photo_path = 'x/' || id
+where id in (select id from gifts where name like 'Gift %' order by name limit 200);
+do $$
+declare ok boolean := false;
+begin
+  begin
+    update gifts set photo_path = 'x/one-too-many'
+    where id = (select id from gifts where name like 'Gift %' and photo_path is null limit 1);
+  exception when others then ok := true;
+  end;
+  if not ok then raise exception 'FAIL: more than 200 pictures allowed'; end if;
+end $$;
+
+reset role;
+
 select 'ALL RLS TESTS PASSED' as result;
 
 rollback;
