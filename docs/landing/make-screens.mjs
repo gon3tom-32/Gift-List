@@ -42,15 +42,15 @@ const giftRows = [
   ['k4', 'p2', 'Mystery novel set', 'Amazon', '32.00', null, 'ordered', 'book', false],
   ['k5', 'p3', 'Hand-knit slippers', 'Etsy', '38.00', '38.00', 'given', 'slippers', false],
   ['k6', 'p4', 'Art supply kit', 'Michaels', '55.00', null, 'ordered', 'art', true],
-  ['k7', 'p4', 'Board game night set', 'Target', '36.00', null, 'idea', 'game', false],
-  ['k8', 'p5', 'LEGO space station', 'LEGO', '79.99', '79.99', 'wrapped', 'lego', false],
+  ['k7', 'p4', 'Wooden chess set', 'Target', '36.00', null, 'idea', 'game', false],
+  ['k8', 'p5', 'Toy block tower set', 'Target', '79.99', '79.99', 'wrapped', 'lego', false],
   ['k9', 'p6', 'Squeaky bone trio', 'Chewy', '14.00', null, 'idea', 'bone', true],
   ['k10', 'p7', 'Desk plant', 'The Sill', '28.00', null, 'idea', 'plant', false],
   ['k11', 'p8', 'Noise-cancelling headphones', 'Best Buy', '149.00', null, 'idea', 'phones', true],
   ['k12', 'p9', 'BBQ sauce sampler', 'Williams Sonoma', '34.00', '34.00', 'given', 'sauce', false],
 ].map(([id, person_id, name, store, estimate, paid, status, photo, byPartner]) => ({
   id, household_id: HID, person_id, name, store, link: null,
-  photo_path: `${HID}/gifts/${photo}.svg`,
+  photo_path: `${HID}/gifts/${photo}.jpg`,
   estimate, paid, status, assigned_to: null, shared: false, ship_by: null, payment_method: null,
   created_by: byPartner ? PARTNER : ME,
   updated_by: byPartner ? PARTNER : ME,
@@ -60,7 +60,7 @@ const giftRows = [
 // the box of four soaps shared between the kids' cousins
 giftRows.push({
   id: 'k13', household_id: HID, person_id: 'p4', name: 'Soap set (box of 4)', store: 'Lush', link: null,
-  photo_path: `${HID}/gifts/soap.svg`, estimate: '48.00', paid: null, status: 'ordered', assigned_to: null,
+  photo_path: `${HID}/gifts/soap.jpg`, estimate: '48.00', paid: null, status: 'ordered', assigned_to: null,
   shared: true, ship_by: null, payment_method: null, created_by: ME, updated_by: ME, created_at: ago(60), updated_at: ago(60),
 });
 const recipients = ['p5', 'p3', 'p7'].map((person_id) => ({ gift_id: 'k13', person_id, household_id: HID }));
@@ -139,7 +139,9 @@ async function setup(page) {
       return json(route, { signedURL: `/object/sign/gift-photos/${encodeURI(path)}?token=demo` });
     }
     if (p.startsWith('/storage/v1/object/')) {
-      const key = decodeURIComponent(p).split('/').pop().replace('.svg', '');
+      const file = decodeURIComponent(p).split('/').pop();
+      if (file.endsWith('.jpg')) return route.fulfill({ status: 200, contentType: 'image/jpeg', headers: { 'access-control-allow-origin': '*' }, body: (await import('node:fs')).readFileSync(new URL('./photos/' + file, import.meta.url)) });
+      const key = file.replace('.svg', '');
       return route.fulfill({ status: 200, contentType: 'image/svg+xml', headers: { 'access-control-allow-origin': '*' }, body: svg(key) });
     }
     if (p.startsWith('/functions/v1/link-preview')) {
@@ -168,7 +170,7 @@ const page = await ctx.newPage();
 page.on('pageerror', (e) => console.log('pageerror', e.message));
 await setup(page);
 await shot(page, 'people', '');
-await shot(page, 'gifts', '#/gifts');
+await shot(page, 'gifts', '#/gifts', async (pg) => { await pg.evaluate(() => window.scrollTo(0, 215)); await pg.waitForTimeout(500); });
 await shot(page, 'person', '#/person/p5');
 await shot(page, 'people2', '', async (pg) => { await pg.evaluate(() => window.scrollTo(0, 760)); await pg.waitForTimeout(400); });
 await shot(page, 'settings', '', async (pg) => { await pg.getByRole('button', { name: 'Settings' }).click(); await pg.waitForTimeout(600); });
