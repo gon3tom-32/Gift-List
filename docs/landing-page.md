@@ -11,7 +11,7 @@ What visitors see when they are not signed in: a hero, five feature rows with re
 - `index.html` has the description and Open Graph tags (share image: `public/landing/screen-people.webp`).
 
 ## The screens
-`public/landing/screen-*.webp` are real screenshots of the real app, filled with a made-up family ("Maple family"): no real names, emails or photos. Pictures on the gift cards are generated illustrations.
+`public/landing/screen-*.webp` are real screenshots of the real app, filled with a made-up family ("Maple family"): no real names, emails or photos. The pictures on the gift cards are free-to-use stock photos from Pexels (list below), so the cards look like a real list.
 
 `docs/landing/make-screens.mjs` makes them. It runs the built app in headless Chromium and answers every Supabase request with the invented household, so nothing real is read or written.
 
@@ -21,6 +21,22 @@ npx vite preview --outDir /tmp/demo-dist --port 4173
 PW_PATH=<path to playwright/index.js> OUT=/tmp/shots node docs/landing/make-screens.mjs
 ```
 Then convert the PNGs to WebP (quality about 82, 780 px wide) into `public/landing/`.
+
+## Gift photos
+Pexels photos (free to use, no credit needed; the Pexels licence still bars selling them as is). The script serves them from a `photos/` folder next to it, one JPEG per key, saved from
+`https://images.pexels.com/photos/<id>/pexels-photo-<id>.jpeg?auto=compress&cs=tinysrgb&w=500`:
+
+| Key | Pexels ID | Key | Pexels ID |
+|---|---|---|---|
+| scarf | 3151954 | game (chess) | 8438872 |
+| spa | 1926811 | lego (toy blocks) | 298825 |
+| pan | 5639274 | bone | 13419673 |
+| book | 9572701 | plant | 1931143 |
+| slippers | 6633363 | phones | 7054538 |
+| art | 29589096 | sauce | 5793770 |
+| soap | 16244099 | | |
+
+The family picture on the household header is a generated illustration. Pexels' search needs a free API key and its website blocks scripts, so photo IDs were found through web search, then checked by eye. Do not use photos of identifiable people for gifts.
 
 ## Pitfalls
 - The screenshots show the Christmas countdown as of the day they were taken ("59 days"). Re-shoot when the app's look changes, or when the number looks odd.
