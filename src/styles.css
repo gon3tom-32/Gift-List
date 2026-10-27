@@ -235,6 +235,8 @@ code {
   min-height: 100dvh;
   display: grid;
   place-items: center;
+  align-content: center;
+  gap: 8px;
   padding: 24px 16px;
 }
 
@@ -700,6 +702,48 @@ details.more[open] summary {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.privacy-line {
+  text-align: center;
+  margin: 0;
+}
+.how-it-works {
+  width: min(100%, 440px);
+  margin: 16px auto 0;
+  padding: 0 4px;
+}
+.how-it-works h2 {
+  text-align: center;
+  margin: 0 0 8px;
+}
+.how-it-works ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.how-it-works li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.how-it-works li svg {
+  flex: none;
+  color: var(--primary-text);
+}
+.starters {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+.starters legend {
+  font-weight: 600;
+  padding: 0 0 6px;
 }
 .steps {
   margin: 0;
