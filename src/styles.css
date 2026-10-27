@@ -1806,3 +1806,311 @@ dialog.sheet::backdrop {
   display: grid;
   gap: 6px;
 }
+
+/* ---------- Landing page (signed-out home) ---------- */
+
+.landing {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+.landing-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+}
+.landing-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.landing-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.4rem;
+  color: var(--primary-text);
+}
+.landing-hero {
+  display: grid;
+  gap: 28px;
+  justify-items: center;
+  padding: 32px 20px 56px;
+  margin: 0 8px;
+  border-radius: 32px;
+  background: var(--header-bg);
+  color: var(--header-text);
+  overflow: hidden;
+  text-align: center;
+}
+.landing-hero-text {
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+  max-width: 520px;
+}
+.landing-pill {
+  margin: 0;
+  background: #ffffff;
+  color: #b3343f;
+  font-family: var(--font-display);
+  font-weight: 600;
+  padding: 6px 16px;
+  border-radius: 999px;
+}
+.landing-hero h1 {
+  font-size: clamp(2.2rem, 8vw, 3.6rem);
+  line-height: 1.05;
+}
+.landing-hero h1 span {
+  color: #ffd6e4;
+}
+.landing-lead {
+  font-size: 1.1rem;
+  max-width: 46ch;
+}
+.landing-cta {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+.landing-hero .muted {
+  color: rgb(255 255 255 / 0.85);
+}
+.landing-hero .btn.primary {
+  background: #ffffff;
+  color: #0f6a57;
+  border-color: #ffffff;
+}
+.landing-hero .btn.primary:hover:not(:disabled) {
+  background: #d9f2e8;
+}
+
+.phone {
+  width: min(78vw, 280px);
+  flex: none;
+  border: 9px solid #1c2433;
+  border-radius: 38px;
+  background: #1c2433;
+  box-shadow:
+    0 24px 48px rgb(10 30 50 / 0.28),
+    0 0 0 2px rgb(255 255 255 / 0.2);
+  overflow: hidden;
+}
+.phone img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 28px;
+  background: var(--surface);
+}
+.landing-hero .phone {
+  transform: rotate(2.5deg);
+}
+
+.candy-rule {
+  height: 10px;
+  margin: -5px 24px 0;
+  border-radius: 999px;
+  background: repeating-linear-gradient(-45deg, var(--candy) 0 10px, #ffffff 10px 20px);
+  position: relative;
+}
+
+.landing-features {
+  display: grid;
+  gap: 56px;
+  padding: 56px 20px 24px;
+}
+.landing-feature {
+  display: grid;
+  gap: 24px;
+  justify-items: center;
+  text-align: center;
+}
+.landing-feature-text {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  max-width: 440px;
+}
+.landing-feature h2 {
+  font-size: clamp(1.6rem, 5vw, 2.2rem);
+  color: var(--primary-text);
+}
+.landing-feature p {
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+.landing-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: var(--primary-soft);
+  color: var(--primary-text);
+}
+.landing-icon.small {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  flex: none;
+}
+.landing-feature:nth-child(3n + 2) .landing-icon {
+  background: var(--pink);
+  color: var(--pink-text);
+}
+.landing-feature:nth-child(3n) .landing-icon {
+  background: var(--lavender);
+  color: var(--lavender-text);
+}
+.landing-feature .phone {
+  box-shadow:
+    0 0 0 14px var(--primary-soft),
+    0 24px 48px rgb(10 30 50 / 0.2);
+  margin: 14px;
+}
+.landing-feature:nth-child(3n + 2) .phone {
+  box-shadow:
+    0 0 0 14px var(--pink),
+    0 24px 48px rgb(10 30 50 / 0.2);
+}
+.landing-feature:nth-child(3n) .phone {
+  box-shadow:
+    0 0 0 14px var(--lavender),
+    0 24px 48px rgb(10 30 50 / 0.2);
+}
+
+.landing-more {
+  display: grid;
+  gap: 20px;
+  padding: 40px 20px;
+  text-align: center;
+}
+.landing-more h2 {
+  font-size: clamp(1.6rem, 5vw, 2.2rem);
+  color: var(--primary-text);
+}
+.landing-more ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+  text-align: left;
+}
+.landing-more li {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 16px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.landing-more h3 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  margin-bottom: 2px;
+}
+.landing-more p {
+  color: var(--muted);
+}
+
+.landing-start {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  text-align: center;
+  padding: 40px 16px 24px;
+  scroll-margin-top: 12px;
+}
+.landing-start h2 {
+  font-size: clamp(1.8rem, 6vw, 2.4rem);
+  color: var(--primary-text);
+}
+.landing-start .landing-lead {
+  color: var(--muted);
+}
+.signin-embedded {
+  width: 100%;
+  display: grid;
+  justify-items: center;
+  text-align: left;
+}
+.landing-foot {
+  padding: 8px 20px 24px;
+  text-align: center;
+}
+
+/* Screens ease in as they scroll into view, where the browser supports it. */
+@supports (animation-timeline: view()) {
+  .landing-feature .phone,
+  .landing-feature-text,
+  .landing-more li {
+    animation: landing-rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 55%;
+  }
+}
+@keyframes landing-rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (min-width: 860px) {
+  .landing-bar {
+    padding: 16px 24px;
+  }
+  .landing-hero {
+    grid-template-columns: 1.1fr 0.9fr;
+    align-items: center;
+    justify-items: start;
+    text-align: left;
+    padding: 56px 56px 64px;
+    margin: 0 16px;
+  }
+  .landing-hero-text,
+  .landing-cta {
+    justify-items: start;
+  }
+  .landing-hero .phone {
+    justify-self: center;
+    width: 300px;
+  }
+  .landing-features {
+    gap: 88px;
+    padding-top: 80px;
+  }
+  .landing-feature {
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: 56px;
+    text-align: left;
+  }
+  .landing-feature-text {
+    justify-items: start;
+    justify-self: end;
+  }
+  .landing-feature.flip .landing-feature-text {
+    order: 2;
+    justify-self: start;
+  }
+  .landing-feature .phone {
+    justify-self: start;
+    width: 280px;
+  }
+  .landing-feature.flip .phone {
+    justify-self: end;
+  }
+  .landing-more ul {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
