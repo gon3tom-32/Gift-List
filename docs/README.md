@@ -5,6 +5,7 @@ One short file per feature: what it does, how it works, where the code lives, th
 | Feature | File |
 |---|---|
 | Share a link from any site into the app (iPhone Shortcut, deep link, link preview) | [share-from-any-site.md](share-from-any-site.md) |
+| Sign-up for anyone, separate lists, per-list limits, sign-in email setup | [sign-up-and-limits.md](sign-up-and-limits.md) |
 
 ## Still to write up
 
@@ -17,4 +18,4 @@ These exist in the app but do not have their own page yet:
 - "New from your partner" markers
 - Installing to the Home Screen (manifest, icons, cache-busting)
 - Families and groups
-- Sign-in, partner setup and household security (row-level security tests)
+- Partner setup and household security (row-level security tests)
