@@ -10,9 +10,10 @@ import { Avatar } from '../components/Avatar';
 import { PhotoPicker } from '../components/PhotoPicker';
 import { deletePhoto, uploadPhoto } from '../lib/photos';
 import { buildWidgetScript, requestWidgetLink } from '../lib/widget';
+import { buildCsv, downloadCsv, exportFileName } from '../lib/exportCsv';
 import { disablePush, enablePush, pushState, sendTestPush, type PushState } from '../lib/push';
 
-export type SettingsView = 'menu' | 'list' | 'people' | 'notifications' | 'shortcut' | 'widget' | 'password';
+export type SettingsView = 'menu' | 'list' | 'people' | 'notifications' | 'shortcut' | 'widget' | 'password' | 'account';
 
 const PAGE_TITLES: Record<SettingsView, string> = {
   menu: 'Settings',
@@ -22,6 +23,7 @@ const PAGE_TITLES: Record<SettingsView, string> = {
   shortcut: 'Add ideas from any app',
   widget: 'Phone widget',
   password: 'Sign-in and password',
+  account: 'Your data and account',
 };
 
 export function SettingsSheet({ onClose, view = 'menu' }: { onClose: () => void; view?: SettingsView }) {
@@ -165,6 +167,7 @@ export function SettingsSheet({ onClose, view = 'menu' }: { onClose: () => void;
     shortcut: 'Share a gift from any shop',
     widget: 'Countdown on your Home Screen',
     password: 'Sign in with email and password',
+    account: 'Download your list',
   };
   const rows: { id: Exclude<SettingsView, 'menu'>; icon: IconName }[] = [
     { id: 'list', icon: 'gift' },
@@ -173,6 +176,7 @@ export function SettingsSheet({ onClose, view = 'menu' }: { onClose: () => void;
     { id: 'shortcut', icon: 'link' },
     { id: 'widget', icon: 'star' },
     { id: 'password', icon: 'edit' },
+    { id: 'account', icon: 'list' },
   ];
 
   return (
@@ -413,6 +417,26 @@ export function SettingsSheet({ onClose, view = 'menu' }: { onClose: () => void;
           </button>
         </form>
       </section>
+      )}
+
+      {page === 'account' && (
+        <section className="stack" aria-label="Download my list">
+          <p>
+            Take your list with you. This downloads a spreadsheet (CSV) with every person and gift, the prices, status,
+            who is buying and who it is shared with. It opens in Excel, Numbers and Google Sheets.
+          </p>
+          <p className="muted small">Pictures are not included.</p>
+          <button
+            type="button"
+            className="btn primary"
+            onClick={() => {
+              downloadCsv(buildCsv(data), exportFileName());
+              toast('Your list is downloading.');
+            }}
+          >
+            Download my list (CSV)
+          </button>
+        </section>
       )}
 
       {page === 'notifications' && <NotificationsSection householdId={household.id} userId={me} />}

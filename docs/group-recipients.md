@@ -20,4 +20,4 @@ For coworkers, a gift often goes to a whole group, like "Teachers" or "Aides", a
 
 ## Pitfalls
 - Entering the total instead of the per-person price: the field says "Estimate (each)" and shows "$12.00 each x 12 people = $144.00" as you type.
-- The CSV export does not include the headcount yet.
+- The CSV export has People and Total columns for groups; its price columns are per person.
