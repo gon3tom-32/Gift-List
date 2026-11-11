@@ -3,7 +3,7 @@ import { useApp } from '../lib/context';
 import { errorText } from '../lib/supabase';
 import { fetchLinkPreview, fetchPreviewImage, looksLikeUrl, storeFromUrl, type LinkPreview } from '../lib/linkPreview';
 import { uploadPhoto } from '../lib/photos';
-import { formatCents, splitCents, toCents, type Cents } from '../lib/money';
+import { eachText, formatCents, splitCents, toCents, type Cents } from '../lib/money';
 import type { Gift } from '../lib/types';
 import { Sheet } from '../components/Sheet';
 import { MoneyField, TextField } from '../components/Fields';
@@ -120,12 +120,12 @@ export function QuickAddSheet({
   const needsPerson = personId === NEW_PERSON;
   const people = 1 + also.filter((id) => id !== personId).length;
   const shares = estimate !== null && people > 1 ? splitCents(estimate, people) : null;
-  // A group of people (Teachers x12): the price is for one person and the app multiplies.
+  // A group of people (Teachers x12): one gift, one price, shared across the group.
   const heads = people === 1 ? (data.people.find((p) => p.id === personId)?.headcount ?? 1) : 1;
   const splitHint = shares
     ? `Split ${people} ways: ${shares.every((s) => s === shares[0]) ? '' : 'about '}${formatCents(shares[0])} each`
     : heads > 1 && estimate !== null
-      ? `${formatCents(estimate)} each × ${heads} people = ${formatCents(estimate * heads)}`
+      ? `Split across ${heads} people: ${eachText(estimate, heads)}`
       : null;
 
   return (

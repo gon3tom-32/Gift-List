@@ -7,7 +7,7 @@ import { deletePhoto, uploadPhoto } from '../lib/photos';
 import { fetchLinkPreview, fetchPreviewImage, looksLikeUrl, storeFromUrl } from '../lib/linkPreview';
 import { STATUS_LABELS, type GiftStatus } from '../lib/status';
 import { memberName, type Gift, type GiftEvent } from '../lib/types';
-import { formatCents, splitCents, toCents, type Cents } from '../lib/money';
+import { eachText, formatCents, splitCents, toCents, type Cents } from '../lib/money';
 import { Sheet } from '../components/Sheet';
 import { Field, MoneyField, TextField } from '../components/Fields';
 import { StatusStrip } from '../components/StatusStrip';
@@ -104,12 +104,12 @@ export function GiftSheet({
   const people = 1 + form.also.filter((id) => id !== form.person_id).length;
   const price = form.paid ?? form.estimate;
   const shares = price !== null && people > 1 ? splitCents(price, people) : null;
-  // A group of people (Teachers x12): the price is for one person and the app multiplies.
+  // A group of people (Teachers x12): one gift, one price, shared across the group.
   const heads = people === 1 ? (data.people.find((p) => p.id === form.person_id)?.headcount ?? 1) : 1;
   const splitHint = shares
     ? `Split ${people} ways: ${shares.every((s) => s === shares[0]) ? '' : 'about '}${formatCents(shares[0])} each`
     : heads > 1 && price !== null
-      ? `${formatCents(price)} each × ${heads} people = ${formatCents(price * heads)}`
+      ? `Split across ${heads} people: ${eachText(price, heads)}`
       : null;
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm((f) => (f ? { ...f, [key]: value } : f));
@@ -285,13 +285,13 @@ export function GiftSheet({
 
         <div className="row-fields">
           <MoneyField
-            label={heads > 1 ? 'Estimate (each)' : 'Estimate'}
+            label="Estimate"
             value={form.estimate}
             onChange={(v) => set('estimate', v)}
             onValidChange={(ok) => setMoneyOk((m) => ({ ...m, estimate: ok }))}
           />
           <MoneyField
-            label={heads > 1 ? 'Paid (each)' : 'Paid'}
+            label="Paid"
             value={form.paid}
             onChange={(v) => set('paid', v)}
             onValidChange={(ok) => setMoneyOk((m) => ({ ...m, paid: ok }))}

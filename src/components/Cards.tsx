@@ -1,5 +1,5 @@
 import { format, parseISO } from 'date-fns';
-import { formatCents, splitCents } from '../lib/money';
+import { eachText, formatCents, splitCents } from '../lib/money';
 import { NEXT_ACTION, nextStatus, type GiftStatus } from '../lib/status';
 import { memberName, type Gift, type Member, type Person } from '../lib/types';
 import { looksLikeUrl } from '../lib/linkPreview';
@@ -38,6 +38,12 @@ function sharedText(gift: Gift, recipients: Person[], viewerId?: string): string
   return `Split ${n} ways · ${even ? '' : 'about '}${formatCents(shares[0])} each`;
 }
 
+/** "Split across 7 people · about $11.57 each" for a gift to a group. */
+function groupText(price: number | null, people: number): string {
+  if (price === null) return `For ${people} people`;
+  return `Split across ${people} people · ${eachText(price, people)}`;
+}
+
 export function GiftCard({
   gift,
   person,
@@ -63,10 +69,9 @@ export function GiftCard({
   onOpen: () => void;
   onStatus: (to: GiftStatus) => void;
 }) {
-  const unitPrice = gift.paid ?? gift.estimate;
-  // A group (Teachers x12) is priced per person; the card shows the total and the "each".
-  const count = recipients && recipients.length === 1 ? recipients[0].headcount : 1;
-  const price = unitPrice === null ? null : unitPrice * count;
+  const price = gift.paid ?? gift.estimate;
+  // A group (Teachers x12) is one gift: the price is the full spend, shared across its people.
+  const groupSize = recipients && recipients.length === 1 ? recipients[0].headcount : 1;
   const next = nextStatus(gift.status);
   const buyer = buyerText(gift, members, me);
   const hasLink = Boolean(gift.link && looksLikeUrl(gift.link));
@@ -103,11 +108,7 @@ export function GiftCard({
           </button>
         </h3>
         {sharedLine && <p className="gift-shared small">{sharedLine}</p>}
-        {count > 1 && (
-          <p className="gift-shared small">
-            {unitPrice === null ? `For ${count} people` : `${formatCents(unitPrice)} each × ${count} people`}
-          </p>
-        )}
+        {groupSize > 1 && <p className="gift-shared small">{groupText(price, groupSize)}</p>}
         <p className="gift-meta small muted">
           {[
             !hasLink && gift.store,

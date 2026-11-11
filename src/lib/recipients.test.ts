@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extrasByGift, giftCount, giftsLostWith, recipientIds } from './recipients';
+import { extrasByGift, giftsLostWith, recipientIds } from './recipients';
 
 describe('recipients', () => {
   const rows = [
@@ -27,21 +27,5 @@ describe('recipients', () => {
     ];
     expect(giftsLostWith(gifts, map, new Set(['p1'])).map((g) => g.id)).toEqual(['g3']);
     expect(giftsLostWith(gifts, map, new Set(['p1', 'p2', 'p3'])).map((g) => g.id)).toEqual(['g1', 'g3']);
-  });
-});
-
-describe('giftCount', () => {
-  const extras = extrasByGift([{ gift_id: 'shared', person_id: 'p2', household_id: 'h' }]);
-  const heads = new Map([
-    ['teachers', 12],
-    ['mom', 1],
-  ]);
-  it('uses the headcount of a group that is the only recipient', () => {
-    expect(giftCount({ id: 'g', person_id: 'teachers' }, extras, heads)).toBe(12);
-  });
-  it('is 1 for one person, unknown people and shared gifts', () => {
-    expect(giftCount({ id: 'g', person_id: 'mom' }, extras, heads)).toBe(1);
-    expect(giftCount({ id: 'g', person_id: 'nobody' }, extras, heads)).toBe(1);
-    expect(giftCount({ id: 'shared', person_id: 'teachers' }, extras, heads)).toBe(1);
   });
 });

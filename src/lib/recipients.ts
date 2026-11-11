@@ -24,16 +24,3 @@ export function giftsLostWith<G extends Pick<Gift, 'id' | 'person_id'>>(
 ): G[] {
   return gifts.filter((g) => recipientIds(g, extras).every((id) => deleted.has(id)));
 }
-
-/**
- * How many people a gift is for. A group of people (Teachers x12) that is the
- * gift's only recipient counts as its headcount; shared gifts always count as one.
- */
-export function giftCount(
-  gift: Pick<Gift, 'id' | 'person_id'>,
-  extras: Map<string, string[]>,
-  headcounts: Map<string, number>,
-): number {
-  if ((extras.get(gift.id) ?? []).length > 0) return 1;
-  return Math.max(1, headcounts.get(gift.person_id) ?? 1);
-}

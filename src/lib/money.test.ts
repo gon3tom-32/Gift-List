@@ -7,6 +7,7 @@ import {
   giftSpent,
   leftToSpend,
   parseMoneyInput,
+  eachText,
   personTotals,
   splitCents,
   sumGifts,
@@ -209,36 +210,16 @@ describe('personTotals with shared gifts', () => {
   });
 });
 
-describe('groups of people (price is per person)', () => {
-  it('multiplies spent and planned by the count', () => {
-    expect(giftPlanned(gift('idea', 1200, null), 12)).toBe(14400);
-    expect(giftSpent(gift('idea', 1200, null), 12)).toBe(0);
-    expect(giftSpent(gift('ordered', 1200, null), 12)).toBe(14400);
-    // paid is per person too, and wins over the estimate
-    expect(giftSpent(gift('given', 1200, 1050), 12)).toBe(12600);
-    expect(giftPlanned(gift('ordered', 1200, null), 12)).toBe(0);
+describe('a gift to a group is one price, shared', () => {
+  it('counts once, whatever the group size', () => {
+    // $81 planned for "Aides (7)" is $81, not $567.
+    expect(sumGifts([gift('idea', 8100, null)])).toEqual({ spent: 0, planned: 8100 });
+    expect(sumGifts([gift('ordered', 8100, 6750)])).toEqual({ spent: 6750, planned: 0 });
   });
 
-  it('a count of 1 changes nothing', () => {
-    expect(giftSpent(gift('ordered', 1234, null), 1)).toBe(giftSpent(gift('ordered', 1234, null)));
-    expect(giftPlanned(gift('idea', 1234, null), 1)).toBe(giftPlanned(gift('idea', 1234, null)));
-  });
-
-  it('household totals follow each gift’s count', () => {
-    const rows = [
-      { id: 'a', person_id: 'teachers', ...gift('ordered', 1200, null) },
-      { id: 'b', person_id: 'aides', ...gift('idea', 1000, null) },
-      { id: 'c', person_id: 'mom', ...gift('ordered', 4500, 4000) },
-    ];
-    const heads: Record<string, number> = { teachers: 12, aides: 6 };
-    const countOf = (g: { person_id: string }) => heads[g.person_id] ?? 1;
-    expect(sumGifts(rows, countOf)).toEqual({ spent: 14400 + 4000, planned: 6000 });
-    expect(sumGifts(rows)).toEqual({ spent: 1200 + 4000, planned: 1000 });
-  });
-
-  it('per-person totals include the group’s multiplied cost, exact to the cent', () => {
-    const rows = [{ id: 'a', person_id: 'teachers', ...gift('ordered', 1233, null) }];
-    const totals = personTotals(rows, (g) => [g.person_id], () => 7);
-    expect(totals.get('teachers')).toEqual({ spent: 8631, planned: 0 });
+  it('says what each person’s share is', () => {
+    expect(eachText(8400, 7)).toBe('$12.00 each');
+    expect(eachText(8100, 7)).toBe('about $11.58 each');
+    expect(eachText(8775, 13)).toBe('$6.75 each');
   });
 });
