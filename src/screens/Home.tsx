@@ -3,7 +3,7 @@ import { useHouseholdData } from '../lib/data';
 import { AppContext, UNDO_MS, type AppContextValue, type ToastAction } from '../lib/context';
 import { routeHref, useRoute } from '../lib/route';
 import { personTotals, sumGifts, type Totals } from '../lib/money';
-import { extrasByGift, recipientIds } from '../lib/recipients';
+import { extrasByGift, giftCount, recipientIds } from '../lib/recipients';
 import { isOpen, shouldCelebrate, statusIndex, type GiftStatus } from '../lib/status';
 import { errorText } from '../lib/supabase';
 import type { Gift, Person } from '../lib/types';
@@ -61,14 +61,16 @@ export function Home({ householdId, me }: { householdId: string; me: string }) {
 
   const ctx: AppContextValue = useMemo(() => ({ data, me, toast }), [data, me, toast]);
 
-  const totals = useMemo(() => sumGifts(data.gifts), [data.gifts]);
-  const openCount = useMemo(() => data.gifts.filter((g) => isOpen(g.status)).length, [data.gifts]);
-
   // A gift shared between people counts once overall; each person carries their share.
   const extras = useMemo(() => extrasByGift(data.recipients), [data.recipients]);
+  // A gift for a group (Teachers x12) is priced per person and counts once for each of them.
+  const headcounts = useMemo(() => new Map(data.people.map((p) => [p.id, p.headcount])), [data.people]);
+  const countOf = useCallback((g: Gift) => giftCount(g, extras, headcounts), [extras, headcounts]);
+  const totals = useMemo(() => sumGifts(data.gifts, countOf), [data.gifts, countOf]);
+  const openCount = useMemo(() => data.gifts.filter((g) => isOpen(g.status)).length, [data.gifts]);
   const totalsByPerson = useMemo(
-    () => personTotals(data.gifts, (g) => recipientIds(g, extras)),
-    [data.gifts, extras],
+    () => personTotals(data.gifts, (g) => recipientIds(g, extras), countOf),
+    [data.gifts, extras, countOf],
   );
 
   const totalsByGroup = useMemo(() => {
@@ -245,7 +247,7 @@ export function Home({ householdId, me }: { householdId: string; me: string }) {
         household={data.household}
         totals={totals}
         openCount={openCount}
-        peopleCount={data.people.length}
+        peopleCount={data.people.reduce((n, p) => n + p.headcount, 0)}
         onSettings={(view) => setSheet({ kind: 'settings', view })}
       />
 

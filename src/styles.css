@@ -1084,6 +1084,10 @@ details.more[open] summary {
   font-weight: 700;
   margin-top: 4px;
 }
+.person-count {
+  color: var(--muted);
+  font-weight: 600;
+}
 .person-total {
   font-weight: 600;
   color: var(--mint-text);

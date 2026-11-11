@@ -63,7 +63,10 @@ export function GiftCard({
   onOpen: () => void;
   onStatus: (to: GiftStatus) => void;
 }) {
-  const price = gift.paid ?? gift.estimate;
+  const unitPrice = gift.paid ?? gift.estimate;
+  // A group (Teachers x12) is priced per person; the card shows the total and the "each".
+  const count = recipients && recipients.length === 1 ? recipients[0].headcount : 1;
+  const price = unitPrice === null ? null : unitPrice * count;
   const next = nextStatus(gift.status);
   const buyer = buyerText(gift, members, me);
   const hasLink = Boolean(gift.link && looksLikeUrl(gift.link));
@@ -100,6 +103,11 @@ export function GiftCard({
           </button>
         </h3>
         {sharedLine && <p className="gift-shared small">{sharedLine}</p>}
+        {count > 1 && (
+          <p className="gift-shared small">
+            {unitPrice === null ? `For ${count} people` : `${formatCents(unitPrice)} each × ${count} people`}
+          </p>
+        )}
         <p className="gift-meta small muted">
           {[
             !hasLink && gift.store,
@@ -158,6 +166,7 @@ export function PersonCard({
     >
       <Avatar name={person.name} photoPath={person.photo_path} size={56} />
       <span className="person-name">{person.name}</span>
+      {person.headcount > 1 && <span className="small person-count">{person.headcount} people</span>}
       <span className="person-badges">
         {ideas > 0 && <span className="badge status-idea">{`${ideas} idea${ideas === 1 ? '' : 's'}`}</span>}
         {purchased > 0 && <span className="badge status-given">{`${purchased} purchased`}</span>}

@@ -57,6 +57,7 @@ export interface PersonInput {
   family_id?: string | null;
   budget?: Cents | null;
   photo_path?: string | null;
+  headcount?: number;
 }
 
 export interface GiftInput {

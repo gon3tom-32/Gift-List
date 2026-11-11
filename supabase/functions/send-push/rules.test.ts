@@ -8,6 +8,7 @@ import {
   daysUntilChristmas,
   isMilestone,
   leftToSpend,
+  withCounts,
   shorten,
   widgetPeople,
   widgetSummary,
@@ -161,5 +162,31 @@ describe('widgetPeople', () => {
     // Pinned to what src/components/Avatar.tsx gives "Bella"; change both together.
     expect(avatarColor('Bella')).toBe('#2a7d4f');
     expect(avatarColor('Bella')).toMatch(/^#[0-9a-f]{6}$/);
+  });
+});
+
+describe('groups of people', () => {
+  it('multiplies spent and planned by the count', () => {
+    const gifts = [
+      { status: 'idea', estimate: 10, paid: null, count: 6 },
+      { status: 'ordered', estimate: 12, paid: 11.5, count: 12 },
+      { status: 'wrapped', estimate: 20, paid: null },
+    ];
+    expect(leftToSpend(1000, gifts)).toBe(100000 - 6000 - 13800 - 2000);
+  });
+
+  it('counts a group that is the only recipient, and shared gifts as one', () => {
+    const gifts = [
+      { id: 'a', person_id: 'teachers' },
+      { id: 'b', person_id: 'teachers' },
+      { id: 'c', person_id: 'mom' },
+      { id: 'd', person_id: 'ghost' },
+    ];
+    const people = [
+      { id: 'teachers', headcount: 12 },
+      { id: 'mom', headcount: 1 },
+    ];
+    const counted = withCounts(gifts, people, [{ gift_id: 'b', person_id: 'mom' }]);
+    expect(counted.map((g) => g.count)).toEqual([12, 1, 1, 1]);
   });
 });

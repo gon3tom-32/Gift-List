@@ -16,6 +16,8 @@ export function AlsoFor({
     () => [...data.groups].sort((a, b) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at)),
     [data.groups],
   );
+  // A group of people (Teachers x12) is priced per person, so it can't share a gift with others.
+  if ((data.people.find((p) => p.id === mainId)?.headcount ?? 1) > 1) return null;
   const chosen = new Set(selected);
   const toggle = (id: string) => onChange(chosen.has(id) ? selected.filter((x) => x !== id) : [...selected, id]);
 
@@ -26,7 +28,7 @@ export function AlsoFor({
       <div className="also-for-list">
         {groups.map((g) => {
           const people = data.people
-            .filter((p) => p.group_id === g.id && p.id !== mainId)
+            .filter((p) => p.group_id === g.id && p.id !== mainId && p.headcount === 1)
             .sort((a, b) => a.name.localeCompare(b.name));
           if (people.length === 0) return null;
           return (
