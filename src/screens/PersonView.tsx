@@ -56,6 +56,7 @@ export function PersonView({ personId, tools }: { personId: string; tools: HomeT
           {group && (
             <p className="small muted">
               <Icon name={group.icon} size={14} /> {group.name}
+              {person.headcount > 1 && <> · {person.headcount} people</>}
             </p>
           )}
           <BudgetBar budget={person.budget} totals={totals} label={person.name} />

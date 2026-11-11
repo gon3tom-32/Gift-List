@@ -13,6 +13,9 @@ import { BudgetBar } from '../components/BudgetBar';
 import type { HomeTools } from './Home';
 
 
+/** Headcount of a list of people: a group like Teachers x12 counts as twelve. */
+const heads = (list: Person[]) => list.reduce((n, p) => n + p.headcount, 0);
+
 export function PeopleView({ tools }: { tools: HomeTools }) {
   const { data, toast } = useApp();
   const [busy, setBusy] = useState(false);
@@ -110,7 +113,7 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
                   {group.name}
                 </h2>
                 <p className="small muted">
-                  {people.length} {people.length === 1 ? 'person' : 'people'}
+                  {heads(people)} {heads(people) === 1 ? 'person' : 'people'}
                   {families.length > 0 && ` · ${families.length} ${families.length === 1 ? 'family' : 'families'}`}
                 </p>
               </div>
@@ -162,7 +165,7 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
                         {fam.name}
                       </h3>
                       <p className="small muted">
-                        {members.length} {members.length === 1 ? 'person' : 'people'}
+                        {heads(members)} {heads(members) === 1 ? 'person' : 'people'}
                         {famGifts > 0 && ` · ${famGifts} gift${famGifts === 1 ? '' : 's'}`}
                         {famOpen > 0 && ` · ${famOpen} open`}
                         {famTotals.spent + famTotals.planned > 0 &&

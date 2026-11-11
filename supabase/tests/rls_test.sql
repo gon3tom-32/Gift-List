@@ -569,6 +569,37 @@ begin
   if not ok then raise exception 'FAIL: more than 200 pictures allowed'; end if;
 end $$;
 
+-- headcount: a person defaults to 1; a group of people may be 1 to 500
+do $$
+declare ok boolean;
+begin
+  if (select headcount from people where name = 'Person 1') <> 1 then
+    raise exception 'FAIL: headcount should default to 1';
+  end if;
+  update people set headcount = 12 where name = 'Person 1';
+  if (select headcount from people where name = 'Person 1') <> 12 then
+    raise exception 'FAIL: could not set a headcount';
+  end if;
+  ok := false;
+  begin update people set headcount = 0 where name = 'Person 1'; exception when others then ok := true; end;
+  if not ok then raise exception 'FAIL: headcount 0 allowed'; end if;
+  ok := false;
+  begin update people set headcount = 501 where name = 'Person 1'; exception when others then ok := true; end;
+  if not ok then raise exception 'FAIL: headcount 501 allowed'; end if;
+end $$;
+
+-- a stranger can't change someone else's headcount
+select set_config('request.jwt.claims',
+  json_build_object('sub', (select v from t_ids where k = 'alice'),
+                    'email', 'alice@rls-test.example', 'role', 'authenticated')::text, true);
+do $$
+declare n int;
+begin
+  update people set headcount = 99 where name = 'Person 1' and household_id = (select v from t_ids where k = 'evil_home');
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: a stranger changed a headcount'; end if;
+end $$;
+
 reset role;
 
 select 'ALL RLS TESTS PASSED' as result;
