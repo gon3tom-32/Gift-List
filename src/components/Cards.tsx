@@ -1,5 +1,5 @@
 import { format, parseISO } from 'date-fns';
-import { eachText, formatCents, splitCents } from '../lib/money';
+import { eachText, formatCents, splitWeighted } from '../lib/money';
 import { NEXT_ACTION, nextStatus, type GiftStatus } from '../lib/status';
 import { memberName, type Gift, type Member, type Person } from '../lib/types';
 import { looksLikeUrl } from '../lib/linkPreview';
@@ -27,15 +27,20 @@ function sharedText(gift: Gift, recipients: Person[], viewerId?: string): string
   const n = recipients.length;
   if (n < 2) return null;
   const price = gift.paid ?? gift.estimate;
-  const shares = price === null ? null : splitCents(price, n);
+  // A group (Teachers x13) takes a share in proportion to its people.
+  const heads = recipients.reduce((sum, p) => sum + p.headcount, 0);
+  const hasGroup = heads > n;
+  const shares = price === null ? null : splitWeighted(price, recipients.map((p) => p.headcount));
   if (viewerId) {
     const i = Math.max(0, recipients.findIndex((p) => p.id === viewerId));
     const others = otherNames(recipients.filter((p) => p.id !== viewerId));
-    return shares ? `Shared with ${others} · your share ${formatCents(shares[i])}` : `Shared with ${others}`;
+    const whose = recipients[i].headcount > 1 ? `${recipients[i].name}’s share` : 'your share';
+    return shares ? `Shared with ${others} · ${whose} ${formatCents(shares[i])}` : `Shared with ${others}`;
   }
-  if (!shares) return `Shared by ${n} people`;
-  const even = shares.every((s) => s === shares[0]);
-  return `Split ${n} ways · ${even ? '' : 'about '}${formatCents(shares[0])} each`;
+  if (price === null) return hasGroup ? `Shared across ${heads} people` : `Shared by ${n} people`;
+  if (hasGroup) return `Shared across ${heads} people · ${eachText(price, heads)}`;
+  const even = shares!.every((s) => s === shares![0]);
+  return `Split ${n} ways · ${even ? '' : 'about '}${formatCents(shares![0])} each`;
 }
 
 /** "Split across 7 people · about $11.57 each" for a gift to a group. */
