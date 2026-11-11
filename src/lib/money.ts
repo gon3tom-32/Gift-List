@@ -100,14 +100,31 @@ export function sumGifts(gifts: Iterable<MoneyGift>): Totals {
 }
 
 /**
+ * Splits a whole-cent amount in proportion to weights (people in each group).
+ * Leftover cents go to the biggest remainders, first come first served, so the
+ * shares always add up exactly: 1000 split 1:1:1 = [334, 333, 333].
+ */
+export function splitWeighted(total: Cents, weights: number[]): Cents[] {
+  const n = weights.length;
+  if (n <= 1) return [total];
+  const sum = weights.reduce((a, b) => a + b, 0);
+  if (!(sum > 0)) return splitWeighted(total, weights.map(() => 1));
+  const shares = weights.map((w) => Math.floor((total * w) / sum));
+  const leftover = total - shares.reduce((a, b) => a + b, 0);
+  const order = weights
+    .map((w, i) => ({ i, rem: (total * w) % sum }))
+    .sort((a, b) => b.rem - a.rem || a.i - b.i);
+  for (let k = 0; k < leftover; k++) shares[order[k].i]++;
+  return shares;
+}
+
+/**
  * Splits a whole-cent amount equally. Leftover cents go one each to the first
  * people, so the shares always add up exactly: 1000 / 3 = [334, 333, 333].
  */
 export function splitCents(total: Cents, parts: number): Cents[] {
   if (parts <= 1) return [total];
-  const base = Math.trunc(total / parts);
-  const leftover = total - base * parts;
-  return Array.from({ length: parts }, (_, i) => base + (i < leftover ? 1 : 0));
+  return splitWeighted(total, Array.from({ length: parts }, () => 1));
 }
 
 /** "$11.57 each", or "about $11.57 each" when the amount doesn't divide evenly. */
@@ -124,12 +141,15 @@ export function eachText(total: Cents, people: number): string {
 export function personTotals(
   gifts: Iterable<MoneyGift & { id: string; person_id: string }>,
   recipientsOf: (g: { id: string; person_id: string }) => string[],
+  weightOf: (personId: string) => number = () => 1,
 ): Map<string, Totals> {
   const out = new Map<string, Totals>();
   for (const g of gifts) {
     const people = recipientsOf(g);
-    const spent = splitCents(giftSpent(g), people.length);
-    const planned = splitCents(giftPlanned(g), people.length);
+    // A group (Teachers x13) takes a share in proportion to its people.
+    const weights = people.map(weightOf);
+    const spent = splitWeighted(giftSpent(g), weights);
+    const planned = splitWeighted(giftPlanned(g), weights);
     people.forEach((id, i) => {
       const t = out.get(id) ?? { spent: 0, planned: 0 };
       out.set(id, { spent: t.spent + spent[i], planned: t.planned + planned[i] });

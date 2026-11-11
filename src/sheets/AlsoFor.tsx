@@ -16,19 +16,17 @@ export function AlsoFor({
     () => [...data.groups].sort((a, b) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at)),
     [data.groups],
   );
-  // A group of people (Teachers x12) is priced per person, so it can't share a gift with others.
-  if ((data.people.find((p) => p.id === mainId)?.headcount ?? 1) > 1) return null;
   const chosen = new Set(selected);
   const toggle = (id: string) => onChange(chosen.has(id) ? selected.filter((x) => x !== id) : [...selected, id]);
 
   return (
     <details className="also-for" open={selected.length > 0}>
       <summary>{selected.length > 0 ? `Also for ${selected.length} more` : 'Also for someone else?'}</summary>
-      <p className="small muted">Tick everyone it is for. The cost is split equally between them.</p>
+      <p className="small muted">Tick everyone it is for. The cost is split by the number of people in each.</p>
       <div className="also-for-list">
         {groups.map((g) => {
           const people = data.people
-            .filter((p) => p.group_id === g.id && p.id !== mainId && p.headcount === 1)
+            .filter((p) => p.group_id === g.id && p.id !== mainId)
             .sort((a, b) => a.name.localeCompare(b.name));
           if (people.length === 0) return null;
           return (
@@ -37,7 +35,10 @@ export function AlsoFor({
               {people.map((p) => (
                 <label key={p.id} className="check">
                   <input type="checkbox" checked={chosen.has(p.id)} onChange={() => toggle(p.id)} />
-                  <span>{p.name}</span>
+                  <span>
+                    {p.name}
+                    {p.headcount > 1 && <small className="muted"> · {p.headcount} people</small>}
+                  </span>
                 </label>
               ))}
             </fieldset>

@@ -23,7 +23,7 @@ A playful, shared Christmas gift list and budget app for a couple. Both partners
 - Store all money as `numeric(12,2)`. Never use floats for totals (the app uses whole cents, see `src/lib/money.ts`).
 - A gift's **spent** amount is `paid` if entered, otherwise `estimate`, and only when the status is past `idea`.
 - A gift's **planned** amount is `estimate` while the status is `idea`.
-- A person can be a group of N people (`people.headcount`, Coworkers only) who share ONE gift. The gift's price is the full spend and is never multiplied by N; N only shows the split (about price / N each). See `docs/group-recipients.md`.
+- A person can be a group of N people (`people.headcount`, Coworkers only) who share ONE gift. The gift's price is the full spend and is never multiplied by N; N only shows the split (about price / N each). A gift shared across groups splits in proportion to their headcounts (`splitWeighted`). See `docs/group-recipients.md`.
 - Household "left to spend" = household budget − spent − planned. Show it red when negative.
 - Totals are calculated in the app or a Postgres view. Do not store them.
 

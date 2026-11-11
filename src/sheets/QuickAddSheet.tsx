@@ -120,13 +120,17 @@ export function QuickAddSheet({
   const needsPerson = personId === NEW_PERSON;
   const people = 1 + also.filter((id) => id !== personId).length;
   const shares = estimate !== null && people > 1 ? splitCents(estimate, people) : null;
-  // A group of people (Teachers x12): one gift, one price, shared across the group.
-  const heads = people === 1 ? (data.people.find((p) => p.id === personId)?.headcount ?? 1) : 1;
-  const splitHint = shares
-    ? `Split ${people} ways: ${shares.every((s) => s === shares[0]) ? '' : 'about '}${formatCents(shares[0])} each`
-    : heads > 1 && estimate !== null
+  // Groups of people (Teachers x13): one gift, one price, split by the people in each group.
+  const heads = [personId, ...also.filter((id) => id !== personId)].reduce(
+    (n, id) => n + (data.people.find((p) => p.id === id)?.headcount ?? 1),
+    0,
+  );
+  const splitHint =
+    heads > people && estimate !== null
       ? `Split across ${heads} people: ${eachText(estimate, heads)}`
-      : null;
+      : shares
+        ? `Split ${people} ways: ${shares.every((s) => s === shares[0]) ? '' : 'about '}${formatCents(shares[0])} each`
+        : null;
 
   return (
     <Sheet title="New gift idea" onClose={onClose}>
@@ -157,8 +161,7 @@ export function QuickAddSheet({
             value={personId}
             onChange={(id) => {
               setPersonId(id);
-              const toGroup = (data.people.find((p) => p.id === id)?.headcount ?? 1) > 1;
-              setAlso((a) => (toGroup ? [] : a.filter((x) => x !== id)));
+              setAlso((a) => a.filter((x) => x !== id));
             }}
             allowNew
           />

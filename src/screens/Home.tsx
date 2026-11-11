@@ -65,9 +65,11 @@ export function Home({ householdId, me }: { householdId: string; me: string }) {
   const extras = useMemo(() => extrasByGift(data.recipients), [data.recipients]);
   const totals = useMemo(() => sumGifts(data.gifts), [data.gifts]);
   const openCount = useMemo(() => data.gifts.filter((g) => isOpen(g.status)).length, [data.gifts]);
+  // A gift shared with groups splits in proportion to the people in each (Teachers x13).
+  const headcounts = useMemo(() => new Map(data.people.map((p) => [p.id, p.headcount])), [data.people]);
   const totalsByPerson = useMemo(
-    () => personTotals(data.gifts, (g) => recipientIds(g, extras)),
-    [data.gifts, extras],
+    () => personTotals(data.gifts, (g) => recipientIds(g, extras), (id) => headcounts.get(id) ?? 1),
+    [data.gifts, extras, headcounts],
   );
 
   const totalsByGroup = useMemo(() => {

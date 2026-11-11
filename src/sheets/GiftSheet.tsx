@@ -104,13 +104,17 @@ export function GiftSheet({
   const people = 1 + form.also.filter((id) => id !== form.person_id).length;
   const price = form.paid ?? form.estimate;
   const shares = price !== null && people > 1 ? splitCents(price, people) : null;
-  // A group of people (Teachers x12): one gift, one price, shared across the group.
-  const heads = people === 1 ? (data.people.find((p) => p.id === form.person_id)?.headcount ?? 1) : 1;
-  const splitHint = shares
-    ? `Split ${people} ways: ${shares.every((s) => s === shares[0]) ? '' : 'about '}${formatCents(shares[0])} each`
-    : heads > 1 && price !== null
+  // Groups of people (Teachers x13): one gift, one price, split by the people in each group.
+  const heads = [form.person_id, ...form.also.filter((id) => id !== form.person_id)].reduce(
+    (n, id) => n + (data.people.find((p) => p.id === id)?.headcount ?? 1),
+    0,
+  );
+  const splitHint =
+    heads > people && price !== null
       ? `Split across ${heads} people: ${eachText(price, heads)}`
-      : null;
+      : shares
+        ? `Split ${people} ways: ${shares.every((s) => s === shares[0]) ? '' : 'about '}${formatCents(shares[0])} each`
+        : null;
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm((f) => (f ? { ...f, [key]: value } : f));
 
@@ -276,10 +280,7 @@ export function GiftSheet({
         <TextField label="Gift" value={form.name} onChange={(v) => set('name', v)} required maxLength={200} />
         <PersonPicker
           value={form.person_id}
-          onChange={(v) => {
-            const toGroup = (data.people.find((p) => p.id === v)?.headcount ?? 1) > 1;
-            setForm((f) => (f ? { ...f, person_id: v, also: toGroup ? [] : f.also.filter((id) => id !== v) } : f));
-          }}
+          onChange={(v) => setForm((f) => (f ? { ...f, person_id: v, also: f.also.filter((id) => id !== v) } : f))}
         />
         <AlsoFor mainId={form.person_id} selected={form.also} onChange={(ids) => set('also', ids)} />
 

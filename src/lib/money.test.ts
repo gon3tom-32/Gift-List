@@ -8,6 +8,7 @@ import {
   leftToSpend,
   parseMoneyInput,
   eachText,
+  splitWeighted,
   personTotals,
   splitCents,
   sumGifts,
@@ -221,5 +222,51 @@ describe('a gift to a group is one price, shared', () => {
     expect(eachText(8400, 7)).toBe('$12.00 each');
     expect(eachText(8100, 7)).toBe('about $11.58 each');
     expect(eachText(8775, 13)).toBe('$6.75 each');
+  });
+});
+
+describe('splitWeighted: one gift across groups of different sizes', () => {
+  it('splits $200 across 13, 7 and 9 people in proportion', () => {
+    // 20000 x 13/29, 7/29 and 9/29 = 8965.5, 4827.6, 6206.9: the two leftover cents go to the biggest remainders
+    expect(splitWeighted(20000, [13, 7, 9])).toEqual([8965, 4828, 6207]);
+  });
+
+  it('always adds up to the exact total', () => {
+    for (const total of [1, 99, 8100, 12345, 999999]) {
+      for (const weights of [[13, 7, 9], [1, 1, 1], [500, 1], [2, 3, 5, 7]]) {
+        expect(splitWeighted(total, weights).reduce((a, b) => a + b, 0)).toBe(total);
+      }
+    }
+  });
+
+  it('gives exactly the old equal split when everyone counts as 1', () => {
+    expect(splitWeighted(1000, [1, 1, 1])).toEqual([334, 333, 333]);
+    expect(splitCents(1000, 3)).toEqual([334, 333, 333]);
+    expect(splitWeighted(2400, [1, 1, 1, 1])).toEqual([600, 600, 600, 600]);
+  });
+
+  it('leaves a single recipient alone', () => {
+    expect(splitWeighted(8100, [7])).toEqual([8100]);
+  });
+});
+
+describe('personTotals across groups', () => {
+  const gift = { id: 'tin', person_id: 'teachers', status: 'idea' as const, estimate: 20000, paid: null };
+  const heads: Record<string, number> = { teachers: 13, aides: 7, office: 9 };
+  const recipientsOf = () => ['teachers', 'aides', 'office'];
+
+  it('gives each group a share in proportion to its people, counted once overall', () => {
+    const totals = personTotals([gift], recipientsOf, (id) => heads[id] ?? 1);
+    expect([...totals.entries()].map(([k, v]) => [k, v.planned])).toEqual([
+      ['teachers', 8965],
+      ['aides', 4828],
+      ['office', 6207],
+    ]);
+    expect([...totals.values()].reduce((a, t) => a + t.planned, 0)).toBe(20000);
+  });
+
+  it('treats everyone as 1 when no weights are given', () => {
+    const totals = personTotals([gift], recipientsOf);
+    expect([...totals.values()].map((t) => t.planned)).toEqual([6667, 6667, 6666]);
   });
 });
