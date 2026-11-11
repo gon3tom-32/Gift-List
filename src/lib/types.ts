@@ -54,6 +54,8 @@ export interface Person {
   name: string;
   budget: Cents | null;
   photo_path: string | null;
+  /** 1 for one person; more for a group who all get the same gift (Teachers x12). */
+  headcount: number;
   created_at: string;
 }
 
@@ -108,6 +110,7 @@ export const fromDb = {
   person: (r: Row): Person => ({
     ...(r as unknown as Person),
     family_id: (r.family_id as string | null) ?? null,
+    headcount: Number(r.headcount ?? 1) || 1,
     budget: toCents(r.budget as string),
   }),
   family: (r: Row): Family => r as unknown as Family,

@@ -18,6 +18,7 @@ const person = (id: string, name: string, group_id = 'g1'): Person => ({
   name,
   budget: null,
   photo_path: null,
+  headcount: 1,
   created_at: '2026-10-01T00:00:00Z',
 });
 
@@ -76,7 +77,7 @@ describe('buildCsv', () => {
     expect(csv.startsWith('﻿')).toBe(true);
     const rows = lines(csv);
     expect(rows[0]).toBe(
-      'Person,Group,Family,Gift,Store,Link,Status,Estimate,Paid,Buyer,Shared with,Ship by,Payment method,Added by,Added on',
+      'Person,Group,Family,Gift,Store,Link,Status,Estimate (each),Paid (each),People,Total,Buyer,Shared with,Ship by,Payment method,Added by,Added on',
     );
     expect(rows).toHaveLength(4); // header + Dad, Emma, Mom
     expect(rows[1].startsWith('Dad,Our family,,')).toBe(true);
@@ -88,7 +89,7 @@ describe('buildCsv', () => {
       gifts: [gift({ estimate: 8950, paid: 8450, status: 'wrapped', store: 'Nordstrom, Inc.', assigned_to: 'u2' })],
     });
     const row = lines(csv).find((r) => r.startsWith('Mom'))!;
-    expect(row).toBe('Mom,Our family,,Scarf,"Nordstrom, Inc.",,Wrapped,89.50,84.50,Jordan,,,,Alex,2026-10-05');
+    expect(row).toBe('Mom,Our family,,Scarf,"Nordstrom, Inc.",,Wrapped,89.50,84.50,1,84.50,Jordan,,,,Alex,2026-10-05');
   });
 
   it('shows shared gifts, "Both of us" and gifts whose creator is gone', () => {
@@ -103,6 +104,20 @@ describe('buildCsv', () => {
     const row = lines(csv).find((r) => r.startsWith('Mom'))!;
     expect(row).toContain('Both of us,Dad; Emma');
     expect(row).toContain(',Someone,');
+  });
+
+  it('multiplies a group’s price by its headcount', () => {
+    const csv = buildCsv({
+      ...base,
+      people: [{ ...person('p1', 'Teachers'), headcount: 12 }, person('p2', 'Dad')],
+      gifts: [gift({ id: 'k9', person_id: 'p1', name: 'Succulent', estimate: 1200, status: 'ordered' })],
+    });
+    expect(lines(csv).find((r) => r.startsWith('Teachers'))).toBe(
+      'Teachers,Our family,,Succulent,,,Ordered,12.00,,12,144.00,,,,,Alex,2026-10-05',
+    );
+    // a group with no gifts yet still shows how many people it is
+    const empty = buildCsv({ ...base, people: [{ ...person('p1', 'Aides'), headcount: 6 }] });
+    expect(lines(empty)[1].split(',')[9]).toBe('6');
   });
 
   it('keeps a gift named like a formula from running', () => {

@@ -5,6 +5,8 @@ export interface GiftRow {
   status: string;
   estimate: number | string | null;
   paid: number | string | null;
+  /** People the gift is for when its one recipient is a group (Teachers x12). Prices are per person. */
+  count?: number;
 }
 
 export interface Message {
@@ -18,15 +20,30 @@ export function cents(value: number | string | null | undefined): number {
   return Math.round(Number(value) * 100);
 }
 
-/** Spent: paid (else estimate) once past idea. Planned: estimate while an idea. */
+/** Spent: paid (else estimate) once past idea. Planned: estimate while an idea. Both times the headcount. */
 export function totals(gifts: GiftRow[]): { spent: number; planned: number } {
   let spent = 0;
   let planned = 0;
   for (const g of gifts) {
-    if (g.status === 'idea') planned += cents(g.estimate);
-    else spent += g.paid !== null && g.paid !== undefined ? cents(g.paid) : cents(g.estimate);
+    const count = Math.max(1, g.count ?? 1);
+    if (g.status === 'idea') planned += cents(g.estimate) * count;
+    else spent += (g.paid !== null && g.paid !== undefined ? cents(g.paid) : cents(g.estimate)) * count;
   }
   return { spent, planned };
+}
+
+/**
+ * Adds each gift's headcount, matching the app: a group that is the gift's only
+ * recipient counts as its headcount; a gift shared with others counts as one.
+ */
+export function withCounts<G extends { id: string; person_id: string }>(
+  gifts: G[],
+  people: { id: string; headcount?: number | null }[],
+  extras: { gift_id: string; person_id: string }[],
+): (G & { count: number })[] {
+  const heads = new Map(people.map((p) => [p.id, Math.max(1, Number(p.headcount) || 1)]));
+  const shared = new Set(extras.map((e) => e.gift_id));
+  return gifts.map((g) => ({ ...g, count: shared.has(g.id) ? 1 : (heads.get(g.person_id) ?? 1) }));
 }
 
 export function leftToSpend(budgetDollars: number | string, gifts: GiftRow[]): number {

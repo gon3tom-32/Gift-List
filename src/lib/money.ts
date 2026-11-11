@@ -72,16 +72,20 @@ export interface MoneyGift {
   paid: Cents | null;
 }
 
-/** Spent: paid if entered, else the estimate, but only once past "idea". */
-export function giftSpent(g: MoneyGift): Cents {
+/**
+ * Spent: paid if entered, else the estimate, but only once past "idea".
+ * `count` is how many people get the gift (a group of 12 teachers): prices are
+ * per person, so the amount is multiplied by it.
+ */
+export function giftSpent(g: MoneyGift, count = 1): Cents {
   if (g.status === 'idea') return 0;
-  return g.paid ?? g.estimate ?? 0;
+  return (g.paid ?? g.estimate ?? 0) * count;
 }
 
-/** Planned: the estimate while the gift is still an idea. */
-export function giftPlanned(g: MoneyGift): Cents {
+/** Planned: the estimate while the gift is still an idea, times how many people get it. */
+export function giftPlanned(g: MoneyGift, count = 1): Cents {
   if (g.status !== 'idea') return 0;
-  return g.estimate ?? 0;
+  return (g.estimate ?? 0) * count;
 }
 
 export interface Totals {
@@ -89,12 +93,13 @@ export interface Totals {
   planned: Cents;
 }
 
-export function sumGifts(gifts: Iterable<MoneyGift>): Totals {
+export function sumGifts<G extends MoneyGift>(gifts: Iterable<G>, countOf: (g: G) => number = () => 1): Totals {
   let spent = 0;
   let planned = 0;
   for (const g of gifts) {
-    spent += giftSpent(g);
-    planned += giftPlanned(g);
+    const count = countOf(g);
+    spent += giftSpent(g, count);
+    planned += giftPlanned(g, count);
   }
   return { spent, planned };
 }
@@ -113,16 +118,19 @@ export function splitCents(total: Cents, parts: number): Cents[] {
 /**
  * Spent and planned per person when gifts can be shared. Each gift counts once
  * overall: its cost is divided between its recipients (main person first).
+ * `countOf` says how many people a gift is for when its one recipient is a group.
  */
-export function personTotals(
-  gifts: Iterable<MoneyGift & { id: string; person_id: string }>,
+export function personTotals<G extends MoneyGift & { id: string; person_id: string }>(
+  gifts: Iterable<G>,
   recipientsOf: (g: { id: string; person_id: string }) => string[],
+  countOf: (g: G) => number = () => 1,
 ): Map<string, Totals> {
   const out = new Map<string, Totals>();
   for (const g of gifts) {
     const people = recipientsOf(g);
-    const spent = splitCents(giftSpent(g), people.length);
-    const planned = splitCents(giftPlanned(g), people.length);
+    const count = countOf(g);
+    const spent = splitCents(giftSpent(g, count), people.length);
+    const planned = splitCents(giftPlanned(g, count), people.length);
     people.forEach((id, i) => {
       const t = out.get(id) ?? { spent: 0, planned: 0 };
       out.set(id, { spent: t.spent + spent[i], planned: t.planned + planned[i] });

@@ -32,6 +32,13 @@ export function PersonSheet({
   const [family, setFamily] = useState(person?.family_id ?? familyId ?? '');
   const [newFamilyName, setNewFamilyName] = useState('');
   const groupFamilies = data.families.filter((f) => f.group_id === group);
+  // A group of people (Teachers x12) who all get the same gift. Offered in work groups (briefcase icon).
+  const [isGroup, setIsGroup] = useState((person?.headcount ?? 1) > 1);
+  const [headcountText, setHeadcountText] = useState(String(person?.headcount ?? 12));
+  const canGroup = data.groups.find((g) => g.id === group)?.icon === 'briefcase' || (person?.headcount ?? 1) > 1;
+  const asGroup = isGroup && canGroup;
+  const headcountNum = Number(headcountText);
+  const headcountOk = !asGroup || (Number.isInteger(headcountNum) && headcountNum >= 2 && headcountNum <= 500);
   const [budget, setBudget] = useState<Cents | null>(person?.budget ?? null);
   const [budgetOk, setBudgetOk] = useState(true);
   const [pendingPhoto, setPendingPhoto] = useState<File | null>(null);
@@ -45,18 +52,19 @@ export function PersonSheet({
 
   async function save(e: FormEvent) {
     e.preventDefault();
-    if (!name.trim() || !group || !budgetOk) return;
+    if (!name.trim() || !group || !budgetOk || !headcountOk) return;
     if (family === NEW_FAMILY && !newFamilyName.trim()) return;
     setBusy(true);
     try {
+      const headcount = asGroup ? headcountNum : 1;
       let family_id: string | null = family || null;
       if (family === NEW_FAMILY) {
         family_id = (await data.addFamily({ name: newFamilyName.trim().slice(0, 60), group_id: group })).id;
       }
       if (person) {
-        await data.updatePerson(person.id, { name: name.trim().slice(0, 80), group_id: group, family_id, budget });
+        await data.updatePerson(person.id, { name: name.trim().slice(0, 80), group_id: group, family_id, budget, headcount });
       } else {
-        const created = await data.addPerson({ name: name.trim().slice(0, 80), group_id: group, family_id, budget });
+        const created = await data.addPerson({ name: name.trim().slice(0, 80), group_id: group, family_id, budget, headcount });
         if (pendingPhoto) {
           try {
             const path = await uploadPhoto(householdId, 'people', created.id, pendingPhoto);
@@ -121,7 +129,7 @@ export function PersonSheet({
 
   return (
     <Sheet
-      title={person ? `Edit ${person.name}` : 'Add a person'}
+      title={person ? `Edit ${person.name}` : asGroup ? 'Add a group' : 'Add a person'}
       onClose={onClose}
       footer={
         <>
@@ -133,8 +141,8 @@ export function PersonSheet({
               Delete
             </ConfirmButton>
           )}
-          <button type="submit" form="person-form" className="btn primary" disabled={busy || !name.trim() || !budgetOk}>
-            {person ? 'Save' : 'Add person'}
+          <button type="submit" form="person-form" className="btn primary" disabled={busy || !name.trim() || !budgetOk || !headcountOk}>
+            {person ? 'Save' : asGroup ? 'Add group' : 'Add person'}
           </button>
         </>
       }
@@ -155,14 +163,14 @@ export function PersonSheet({
       />
       <form id="person-form" className="stack" onSubmit={save}>
         <TextField
-          label="Name"
+          label={asGroup ? 'Group name' : 'Name'}
           value={name}
           onChange={setName}
           required
           maxLength={80}
           autoComplete="off"
           autoFocus={!person}
-          placeholder="Grandma, Max the dog…"
+          placeholder={asGroup ? 'Teachers, Aides…' : 'Grandma, Max the dog…'}
         />
         <Field label="Group">
           {(id) => (
@@ -184,6 +192,34 @@ export function PersonSheet({
             </select>
           )}
         </Field>
+ 
+        {canGroup && (
+          <div className="stack">
+            <label className="toggle">
+              <input type="checkbox" checked={isGroup} onChange={(e) => setIsGroup(e.target.checked)} />
+              <span>This is a group of people who all get the same gift</span>
+            </label>
+            {asGroup && (
+              <Field label="How many people?" hint="Prices you enter are for one person; the app multiplies by this number.">
+                {(id, describedBy) => (
+                  <input
+                    id={id}
+                    type="number"
+                    inputMode="numeric"
+                    min={2}
+                    max={500}
+                    step={1}
+                    required
+                    value={headcountText}
+                    onChange={(e) => setHeadcountText(e.target.value)}
+                    aria-describedby={describedBy}
+                    aria-invalid={headcountOk ? undefined : true}
+                  />
+                )}
+              </Field>
+            )}
+          </div>
+        )}
         <Field label="Family (optional)" hint="People in a family show together inside the group.">
           {(id, describedBy) => (
             <select id={id} value={family} onChange={(e) => setFamily(e.target.value)} aria-describedby={describedBy}>

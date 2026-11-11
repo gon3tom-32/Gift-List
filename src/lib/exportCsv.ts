@@ -2,7 +2,7 @@
 // Numbers or Google Sheets. Money stays exact (whole cents turned into "12.50").
 
 import { centsToDb } from './money';
-import { extrasByGift } from './recipients';
+import { extrasByGift, giftCount } from './recipients';
 import { STATUS_LABELS } from './status';
 import { memberName, type Family, type Gift, type GiftRecipient, type Group, type Member, type Person } from './types';
 
@@ -23,8 +23,10 @@ const HEADER = [
   'Store',
   'Link',
   'Status',
-  'Estimate',
-  'Paid',
+  'Estimate (each)',
+  'Paid (each)',
+  'People',
+  'Total',
   'Buyer',
   'Shared with',
   'Ship by',
@@ -51,6 +53,7 @@ export function buildCsv(data: ExportData): string {
   const personName = new Map(data.people.map((p) => [p.id, p.name]));
   const memberById = new Map(data.members.map((m) => [m.user_id, m]));
   const extras = extrasByGift(data.recipients);
+  const headcounts = new Map(data.people.map((p) => [p.id, p.headcount]));
 
   const giftsByPerson = new Map<string, Gift[]>();
   for (const g of data.gifts) giftsByPerson.set(g.person_id, [...(giftsByPerson.get(g.person_id) ?? []), g]);
@@ -65,11 +68,16 @@ export function buildCsv(data: ExportData): string {
     const base = [p.name, groupName.get(p.group_id) ?? '', p.family_id ? (familyName.get(p.family_id) ?? '') : ''];
     const gifts = (giftsByPerson.get(p.id) ?? []).sort((a, b) => a.created_at.localeCompare(b.created_at));
     if (gifts.length === 0) {
-      rows.push([...base, ...Array(HEADER.length - base.length).fill('')]);
+      const row = [...base, ...Array(HEADER.length - base.length).fill('')];
+      row[HEADER.indexOf('People')] = String(p.headcount);
+      rows.push(row);
       continue;
     }
     for (const g of gifts) {
       const shared = (extras.get(g.id) ?? []).map((id) => personName.get(id) ?? '').filter(Boolean);
+      // Prices are per person; a group (Teachers x12) counts once for each of its people.
+      const count = giftCount(g, extras, headcounts);
+      const each = g.paid ?? g.estimate;
       rows.push([
         ...base,
         g.name,
@@ -78,6 +86,8 @@ export function buildCsv(data: ExportData): string {
         STATUS_LABELS[g.status],
         centsToDb(g.estimate) ?? '',
         centsToDb(g.paid) ?? '',
+        String(count),
+        each === null ? '' : (centsToDb(each * count) ?? ''),
         g.shared ? 'Both of us' : g.assigned_to ? memberName(memberById.get(g.assigned_to)) : '',
         shared.join('; '),
         g.ship_by ?? '',

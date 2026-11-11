@@ -27,6 +27,7 @@ import {
   widgetPeople,
   widgetSummary,
   type GiftRow,
+  withCounts,
   type WidgetGift,
   type Message,
 } from './rules.ts';
@@ -122,7 +123,18 @@ const subsFor = (householdId: string, exceptUser?: string | null) =>
     (all) => (Array.isArray(all) ? all.filter((s) => s.user_id !== exceptUser) : []),
   );
 
-const giftsOf = (householdId: string) => getJson<GiftRow[]>(`gifts?household_id=eq.${householdId}&select=status,estimate,paid`);
+/** The household's gifts with each gift's headcount, so totals match the app. */
+async function giftsOf(householdId: string): Promise<GiftRow[]> {
+  const [gifts, people, extras] = await Promise.all([
+    getJson<(GiftRow & { id: string; person_id: string })[]>(
+      `gifts?household_id=eq.${householdId}&select=id,person_id,status,estimate,paid`,
+    ),
+    getJson<{ id: string; headcount: number }[]>(`people?household_id=eq.${householdId}&select=id,headcount`),
+    getJson<{ gift_id: string; person_id: string }[]>(`gift_recipients?household_id=eq.${householdId}&select=gift_id,person_id`),
+  ]);
+  if (!Array.isArray(gifts)) return [];
+  return withCounts(gifts, Array.isArray(people) ? people : [], Array.isArray(extras) ? extras : []);
+}
 
 /** A new gift or status change tells the partner; passing the budget warns both. */
 async function handleActivity(b: Record<string, unknown>): Promise<Response> {
@@ -199,11 +211,11 @@ async function handleWidget(token: string | null): Promise<Response> {
   const hid = mine.household_id;
   const [gifts, people, extras] = await Promise.all([
     getJson<(GiftRow & WidgetGift)[]>(`gifts?household_id=eq.${hid}&select=id,person_id,status,estimate,paid`),
-    getJson<{ id: string; name: string }[]>(`people?household_id=eq.${hid}&select=id,name`),
+    getJson<{ id: string; name: string; headcount: number }[]>(`people?household_id=eq.${hid}&select=id,name,headcount`),
     getJson<{ gift_id: string; person_id: string }[]>(`gift_recipients?household_id=eq.${hid}&select=gift_id,person_id`),
   ]);
   const tiles = widgetPeople(people, gifts, extras);
-  const body = JSON.stringify(widgetSummary(household, gifts, daysUntilChristmas(new Date()), tiles));
+  const body = JSON.stringify(widgetSummary(household, withCounts(gifts, people, extras), daysUntilChristmas(new Date()), tiles));
   return new Response(body, { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 }
 

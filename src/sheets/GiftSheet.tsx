@@ -104,9 +104,13 @@ export function GiftSheet({
   const people = 1 + form.also.filter((id) => id !== form.person_id).length;
   const price = form.paid ?? form.estimate;
   const shares = price !== null && people > 1 ? splitCents(price, people) : null;
+  // A group of people (Teachers x12): the price is for one person and the app multiplies.
+  const heads = people === 1 ? (data.people.find((p) => p.id === form.person_id)?.headcount ?? 1) : 1;
   const splitHint = shares
     ? `Split ${people} ways: ${shares.every((s) => s === shares[0]) ? '' : 'about '}${formatCents(shares[0])} each`
-    : null;
+    : heads > 1 && price !== null
+      ? `${formatCents(price)} each × ${heads} people = ${formatCents(price * heads)}`
+      : null;
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm((f) => (f ? { ...f, [key]: value } : f));
 
@@ -272,19 +276,22 @@ export function GiftSheet({
         <TextField label="Gift" value={form.name} onChange={(v) => set('name', v)} required maxLength={200} />
         <PersonPicker
           value={form.person_id}
-          onChange={(v) => setForm((f) => (f ? { ...f, person_id: v, also: f.also.filter((id) => id !== v) } : f))}
+          onChange={(v) => {
+            const toGroup = (data.people.find((p) => p.id === v)?.headcount ?? 1) > 1;
+            setForm((f) => (f ? { ...f, person_id: v, also: toGroup ? [] : f.also.filter((id) => id !== v) } : f));
+          }}
         />
         <AlsoFor mainId={form.person_id} selected={form.also} onChange={(ids) => set('also', ids)} />
 
         <div className="row-fields">
           <MoneyField
-            label="Estimate"
+            label={heads > 1 ? 'Estimate (each)' : 'Estimate'}
             value={form.estimate}
             onChange={(v) => set('estimate', v)}
             onValidChange={(ok) => setMoneyOk((m) => ({ ...m, estimate: ok }))}
           />
           <MoneyField
-            label="Paid"
+            label={heads > 1 ? 'Paid (each)' : 'Paid'}
             value={form.paid}
             onChange={(v) => set('paid', v)}
             onValidChange={(ok) => setMoneyOk((m) => ({ ...m, paid: ok }))}

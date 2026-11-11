@@ -876,3 +876,16 @@ begin
   return hid;
 end;
 $$;
+
+-- 0009: groups of people (Teachers x12) who all get the same gift
+alter table people
+  add column if not exists headcount int not null default 1;
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'people_headcount_check' and conrelid = 'people'::regclass
+  ) then
+    alter table people
+      add constraint people_headcount_check check (headcount between 1 and 500);
+  end if;
+end $$;

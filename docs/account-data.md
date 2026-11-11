@@ -4,7 +4,8 @@
 Settings, "Your data and account", "Download my list (CSV)".
 
 - Built in the browser from the list that is already loaded (`src/lib/exportCsv.ts`); nothing new is requested from the server and nothing is stored.
-- One row per gift: Person, Group, Family, Gift, Store, Link, Status, Estimate, Paid, Buyer, Shared with, Ship by, Payment method, Added by, Added on. People with no gifts still get a row. Groups follow the list's own order.
+- One row per gift: Person, Group, Family, Gift, Store, Link, Status, Estimate (each), Paid (each), People, Total, Buyer, Shared with, Ship by, Payment method, Added by, Added on. People with no gifts still get a row. Groups follow the list's own order.
+- A group of people (Teachers x12): "Estimate (each)" and "Paid (each)" are per person, "People" is the count and "Total" is price x count (see `docs/group-recipients.md`).
 - Money is exact: whole cents turned into text like `89.50` (never floats).
 - UTF-8 with a byte-order mark so Excel reads accents correctly.
 - Cells that start with `=`, `+`, `-` or `@` get a leading apostrophe so a gift named like a formula cannot run in a spreadsheet.
