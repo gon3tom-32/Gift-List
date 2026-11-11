@@ -299,3 +299,13 @@ The extraction pipeline gives AI Mode something much better than a raw link: **a
 | Open the form from the deep link | `src/screens/Home.tsx` (the `shared` effect) |
 | Shortcut instructions shown to the user | `src/sheets/SettingsSheet.tsx` (`ShareShortcutHelp`) |
 | The server function (fetch, safety, parsing) | `supabase/functions/link-preview/index.ts`, `preview.ts` (+ `preview.test.ts`) |
+
+## Amazon: use the phone page (found by testing from Supabase's own servers)
+Amazon turns servers away from its main product page: for the address a.co links lead to, it answered Supabase's servers with a 503 (or a near-empty "Amazon.com" page). That left only the link words as a title, no price, and a picture address that returns a 43-byte blank image.
+
+The phone version of the page, `https://www.amazon.com/gp/aw/d/<ASIN>`, is served normally and has the title, photo and price. `getPreview` in `supabase/functions/link-preview/preview.ts` now:
+1. follows the share link (a.co hops to `/dp/<ASIN>`; the code is found even if that page is blocked),
+2. if the price, a real photo or a title is missing, loads the phone page and merges it (`amazonNeedsMore`, `mergeAmazon`),
+3. keeps the product-code photo only as a last resort, and cuts the title at the first " | " (the long feature list after it).
+
+How it was diagnosed: a temporary function fetched the pages from Supabase's network and was called from the database with `net.http_get`, so Amazon saw the same address as the real lookup. Amazon's blocking depends on where the request comes from, so test from there, not from a laptop. If it breaks again, repeat that.

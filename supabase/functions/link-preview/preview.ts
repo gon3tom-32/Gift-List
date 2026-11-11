@@ -207,10 +207,12 @@ function amazonImageFromHtml(html: string): string | null {
 
 /** "Amazon.com: LEGO Treehouse : Toys & Games" → "LEGO Treehouse". */
 function cleanAmazonTitle(title: string): string {
-  return title
+  const cleaned = title
     .replace(/^amazon\.[a-z.]+\s*[:|-]\s*/i, '')
     .replace(/\s*:\s*[^:]{2,40}$/, '')
     .trim();
+  // Phone pages append a long feature list after " | "; the product name is the part before it.
+  return cleaned.split(/\s+\|\s+/).find((part) => part.trim().length > 0)?.trim() ?? cleaned;
 }
 
 const BLOCKED_TITLE = /^(amazon\.[a-z.]+|robot check|sorry! something went wrong!?|page not found|access denied)$/i;
@@ -369,20 +371,75 @@ export function parsePreview(html: string, finalUrl: string): Preview {
   return { title: title?.slice(0, 200) || null, image, site: site?.slice(0, 80) ?? null, price };
 }
 
-/** Reads a page's title, picture and site name. Never throws. */
-export async function getPreview(pageUrl: string): Promise<Preview> {
+/**
+ * Amazon turns servers away from its main product page (a 503 or an empty "Amazon.com"
+ * page) but still serves the phone version, which has the title, photo and price.
+ */
+export function amazonPhoneUrl(asin: string): string {
+  return `https://www.amazon.com/gp/aw/d/${asin}`;
+}
+
+/** True when a preview lacks something the phone page may have: a real photo, the price or a title. */
+export function amazonNeedsMore(p: Preview, asin: string): boolean {
+  return !p.price || !p.image || p.image === amazonImageForAsin(asin) || !p.title;
+}
+
+/**
+ * Combines what the first try found with the phone page. The phone page wins for the
+ * title and photo; the product-code photo is only a last resort (it is often a blank 1-pixel image).
+ */
+export function mergeAmazon(first: Preview, second: Preview, asin: string): Preview {
+  const placeholder = amazonImageForAsin(asin);
+  const real = (img: string | null) => (img && img !== placeholder ? img : null);
+  return {
+    title: second.title ?? first.title,
+    image: real(first.image) ?? real(second.image) ?? first.image ?? second.image,
+    site: 'Amazon',
+    price: first.price ?? second.price,
+  };
+}
+
+async function amazonPhonePreview(asin: string): Promise<Preview | null> {
   try {
-    const res = await safeFetch(pageUrl, 'text/html,application/xhtml+xml');
-    const finalUrl = res.url || pageUrl;
-    const type = res.headers.get('content-type') ?? '';
-    // Blocked or not HTML: an Amazon link can still give us its picture.
-    if (!res.ok || !type.includes('html')) return isAmazon(finalUrl) ? parsePreview('', finalUrl) : EMPTY;
-    const html = new TextDecoder().decode(await readLimited(res, MAX_HTML_BYTES));
-    return parsePreview(html, finalUrl);
+    const url = amazonPhoneUrl(asin);
+    const res = await safeFetch(url, 'text/html,application/xhtml+xml');
+    if (!res.ok || !(res.headers.get('content-type') ?? '').includes('html')) return null;
+    return parsePreview(new TextDecoder().decode(await readLimited(res, MAX_HTML_BYTES)), url);
   } catch {
-    // Unreachable or timed out: a full Amazon product link still has its code.
-    return isAmazon(pageUrl) ? parsePreview('', pageUrl) : EMPTY;
+    return null;
   }
+}
+
+/** Reads a page's title, picture, price and site name. Never throws. */
+export async function getPreview(pageUrl: string): Promise<Preview> {
+  let finalUrl = pageUrl;
+  let preview: Preview = EMPTY;
+  // A full Amazon product link already has its code: go straight to the phone page.
+  const direct = isAmazon(pageUrl) ? amazonAsin(pageUrl) : null;
+  if (direct) {
+    preview = parsePreview('', pageUrl);
+  } else {
+    try {
+      const res = await safeFetch(pageUrl, 'text/html,application/xhtml+xml');
+      finalUrl = res.url || pageUrl;
+      const type = res.headers.get('content-type') ?? '';
+      if (res.ok && type.includes('html')) {
+        preview = parsePreview(new TextDecoder().decode(await readLimited(res, MAX_HTML_BYTES)), finalUrl);
+      } else if (isAmazon(finalUrl)) {
+        // Blocked: the address alone still gives the product code and name.
+        preview = parsePreview('', finalUrl);
+      }
+    } catch {
+      // Unreachable or timed out: a full Amazon product link still has its code.
+      if (isAmazon(pageUrl)) preview = parsePreview('', pageUrl);
+    }
+  }
+  const asin = direct ?? (isAmazon(finalUrl) ? (amazonAsin(finalUrl) ?? amazonAsin(pageUrl)) : null);
+  if (asin && amazonNeedsMore(preview, asin)) {
+    const phone = await amazonPhonePreview(asin);
+    if (phone) preview = mergeAmazon(preview, phone, asin);
+  }
+  return preview;
 }
 
 /** Downloads a picture (max 5 MB). Returns null if it isn't a usable image. */
