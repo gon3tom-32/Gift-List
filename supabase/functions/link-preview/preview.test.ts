@@ -50,7 +50,19 @@ describe('DNS checks', () => {
   });
 });
 
-import { amazonAsin, findPrice, isAmazon, largerAmazonImage, normalizePrice, parsePreview } from './preview.ts';
+import {
+  amazonAsin,
+  amazonImageForAsin,
+  amazonNeedsMore,
+  amazonPhoneUrl,
+  findPrice,
+  isAmazon,
+  largerAmazonImage,
+  mergeAmazon,
+  normalizePrice,
+  parsePreview,
+  type Preview,
+} from './preview.ts';
 
 describe('Amazon previews', () => {
   const productUrl = 'https://www.amazon.com/LEGO-Treehouse-Building-Set/dp/B0BBSBJ4YK?ref_=abc&th=1';
@@ -204,5 +216,58 @@ describe('findPrice: Best Buy style pages', () => {
   });
   it('prefers the current price in embedded page state', () => {
     expect(findPrice('<script>{"price":5.99,"currentPrice":9.99}</script>', false)).toBe('9.99');
+  });
+});
+
+describe('Amazon titles from the phone page', () => {
+  it('keeps the product name and drops the feature list after the bar', () => {
+    const html = '<title>Amazon.com : cyeollo Sherpa Dog Coat Reversible Dog Jackets for Small Dogs, Pink, M | Warm Fleece Winter Sweater, Easy On &amp; Off</title>';
+    expect(parsePreview(html, 'https://www.amazon.com/gp/aw/d/B09XB8BHTQ').title).toBe(
+      'cyeollo Sherpa Dog Coat Reversible Dog Jackets for Small Dogs, Pink, M',
+    );
+  });
+});
+
+describe('Amazon phone page fallback (the main page answers servers with a 503)', () => {
+  const asin = 'B09XB8BHTQ';
+  const blocked: Preview = {
+    title: 'cyeollo Sherpa Dog Coat',
+    image: amazonImageForAsin(asin), // the product-code photo, which is often a blank 1-pixel image
+    site: 'Amazon',
+    price: null,
+  };
+  const phone: Preview = {
+    title: 'cyeollo Sherpa Dog Coat Reversible Dog Jackets for Small Dogs, Pink, M',
+    image: 'https://m.media-amazon.com/images/I/71abc._AC_SL1000_.jpg',
+    site: 'Amazon',
+    price: '24.99',
+  };
+
+  it('uses the phone version of the product page', () => {
+    expect(amazonPhoneUrl(asin)).toBe('https://www.amazon.com/gp/aw/d/B09XB8BHTQ');
+    expect(amazonAsin(amazonPhoneUrl(asin))).toBe(asin);
+  });
+
+  it('asks for the phone page when the price or a real photo is missing', () => {
+    expect(amazonNeedsMore(blocked, asin)).toBe(true);
+    expect(amazonNeedsMore({ ...phone, price: null }, asin)).toBe(true);
+    expect(amazonNeedsMore({ ...phone, image: null }, asin)).toBe(true);
+    expect(amazonNeedsMore(phone, asin)).toBe(false);
+  });
+
+  it('takes the real title, photo and price from the phone page', () => {
+    expect(mergeAmazon(blocked, phone, asin)).toEqual(phone);
+  });
+
+  it('keeps what the first try found and only fills the gaps', () => {
+    const first: Preview = { title: 'First title', image: 'https://m.media-amazon.com/images/I/first.jpg', site: 'Amazon', price: '10.00' };
+    const merged = mergeAmazon(first, phone, asin);
+    expect(merged.image).toBe('https://m.media-amazon.com/images/I/first.jpg');
+    expect(merged.price).toBe('10.00');
+  });
+
+  it('falls back to the first result when the phone page is blocked too', () => {
+    const phoneBlocked: Preview = { title: null, image: amazonImageForAsin(asin), site: 'Amazon', price: null };
+    expect(mergeAmazon(blocked, phoneBlocked, asin)).toEqual(blocked);
   });
 });
