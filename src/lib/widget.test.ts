@@ -33,7 +33,7 @@ describe('buildWidgetScript', () => {
 
 describe('the widget script when it runs', () => {
   // Stand-ins for Scriptable's objects, so the layout code is actually executed.
-  function run(family: string, data: unknown) {
+  function run(family: string, data: unknown, edit: (script: string) => string = (x) => x) {
     const urls: string[] = [];
     const texts: string[] = [];
     const draws: string[] = [];
@@ -100,7 +100,7 @@ describe('the widget script when it runs', () => {
       function () {},
       { screenSize: () => ({ width: 390, height: 844 }) },
     ];
-    const fn = new AsyncFunction(...names, buildWidgetScript('https://x.test/l?widget=a.b', 'https://site.test/Gift-List/')) as (
+    const fn = new AsyncFunction(...names, edit(buildWidgetScript('https://x.test/l?widget=a.b', 'https://site.test/Gift-List/'))) as (
       ...a: unknown[]
     ) => Promise<void>;
     return fn(...args).then(() => ({ urls, texts, draws }));
@@ -132,6 +132,38 @@ describe('the widget script when it runs', () => {
     expect(out.draws).toContain('Andrew');
     expect(out.draws).toContain('A');
     expect(out.draws).toContain('✓');
+  });
+
+  const withGroups = {
+    ...sample,
+    groups: [
+      { id: 'g1', name: 'Coworkers', initial: 'C', color: '#2f6fa8', total: 4, remaining: 3 },
+      { id: 'g2', name: 'Our family', initial: 'O', color: '#18806a', total: 4, remaining: 0 },
+    ],
+  };
+
+  it('draws groups, with a number for people still waiting and a check when all are done', async () => {
+    const out = await run('medium', withGroups);
+    expect(out.draws).toContain('Coworkers');
+    expect(out.draws).toContain('Our family');
+    expect(out.draws).toContain('C');
+    expect(out.draws).toContain('3');
+    expect(out.draws).toContain('✓');
+    // groups have no page of their own, so no person links
+    expect(out.urls.some((u) => u.includes('#/person/'))).toBe(false);
+    // and the people are not drawn
+    expect(out.draws).not.toContain('Andrew');
+  });
+
+  it('falls back to people when the server sends no groups (an older server)', async () => {
+    const out = await run('medium', sample);
+    expect(out.draws).toContain('Andrew');
+  });
+
+  it('shows people when the script is switched to "people"', async () => {
+    const out = await run('medium', withGroups, (script) => script.replace('const SHOW = "groups";', 'const SHOW = "people";'));
+    expect(out.draws).toContain('Andrew');
+    expect(out.draws).not.toContain('Coworkers');
   });
 
   it('copes with no people, a failed link, small and Lock Screen sizes', async () => {

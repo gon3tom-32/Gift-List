@@ -139,16 +139,12 @@ export interface WidgetGift {
 
 const STATUS_ORDER: Record<TileStatus, number> = { none: 0, ideas: 1, partly: 2, bought: 3 };
 
-/**
- * The people who most need a gift: nobody-yet first, then ideas only, then partly bought,
- * then done. A gift shared with several people counts for each of them.
- */
-export function widgetPeople(
-  people: { id: string; name: string }[],
+/** Each person's tile status from their gifts. A gift shared with several people counts for each of them. */
+function statusByPerson(
+  people: { id: string }[],
   gifts: WidgetGift[],
   extras: { gift_id: string; person_id: string }[],
-  limit = 6,
-): WidgetPerson[] {
+): Map<string, TileStatus> {
   const extraBy = new Map<string, string[]>();
   for (const e of extras) extraBy.set(e.gift_id, [...(extraBy.get(e.gift_id) ?? []), e.person_id]);
   const counts = new Map<string, { ideas: number; bought: number }>();
@@ -160,13 +156,71 @@ export function widgetPeople(
       counts.set(id, c);
     }
   }
-  const tiles = people.map((p): WidgetPerson => {
+  const out = new Map<string, TileStatus>();
+  for (const p of people) {
     const c = counts.get(p.id) ?? { ideas: 0, bought: 0 };
-    const status: TileStatus = c.ideas === 0 && c.bought === 0 ? 'none' : c.bought === 0 ? 'ideas' : c.ideas === 0 ? 'bought' : 'partly';
+    out.set(p.id, c.ideas === 0 && c.bought === 0 ? 'none' : c.bought === 0 ? 'ideas' : c.ideas === 0 ? 'bought' : 'partly');
+  }
+  return out;
+}
+
+/**
+ * The people who most need a gift: nobody-yet first, then ideas only, then partly bought,
+ * then done. A gift shared with several people counts for each of them.
+ */
+export function widgetPeople(
+  people: { id: string; name: string }[],
+  gifts: WidgetGift[],
+  extras: { gift_id: string; person_id: string }[],
+  limit = 6,
+): WidgetPerson[] {
+  const statuses = statusByPerson(people, gifts, extras);
+  const tiles = people.map((p): WidgetPerson => {
+    const status = statuses.get(p.id) ?? 'none';
     const first = p.name.trim().split(/\s+/)[0] ?? p.name;
     return { id: p.id, name: first.slice(0, 12), initial: ([...first][0] ?? '?').toUpperCase(), color: avatarColor(p.name), status };
   });
   return tiles.sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || a.name.localeCompare(b.name)).slice(0, limit);
+}
+
+export interface WidgetGroup {
+  id: string;
+  name: string;
+  initial: string;
+  color: string;
+  /** people (entries) in the group */
+  total: number;
+  /** how many of them still don't have a gift bought (an idea or nothing yet) */
+  remaining: number;
+}
+
+/**
+ * The groups that most need gifts: most people still waiting first, then A to Z.
+ * Empty groups are left out. A group of people such as Teachers x13 is one entry.
+ */
+export function widgetGroups(
+  groups: { id: string; name: string }[],
+  people: { id: string; name: string; group_id: string }[],
+  gifts: WidgetGift[],
+  extras: { gift_id: string; person_id: string }[],
+  limit = 6,
+): WidgetGroup[] {
+  const statuses = statusByPerson(people, gifts, extras);
+  const tiles: WidgetGroup[] = [];
+  for (const g of groups) {
+    const members = people.filter((p) => p.group_id === g.id);
+    if (members.length === 0) continue;
+    const name = g.name.trim();
+    tiles.push({
+      id: g.id,
+      name: name.slice(0, 12),
+      initial: ([...name][0] ?? '?').toUpperCase(),
+      color: avatarColor(g.name),
+      total: members.length,
+      remaining: members.filter((p) => statuses.get(p.id) !== 'bought').length,
+    });
+  }
+  return tiles.sort((a, b) => b.remaining - a.remaining || a.name.localeCompare(b.name)).slice(0, limit);
 }
 
 export interface WidgetSummary {
@@ -180,6 +234,8 @@ export interface WidgetSummary {
   leftText: string;
   /** Up to six people who most need a gift. First names only. */
   people: WidgetPerson[];
+  /** Up to six groups, most people still waiting first. */
+  groups: WidgetGroup[];
 }
 
 /** Everything the phone widget shows: totals, first names and who needs a gift. Never gift names. */
@@ -188,6 +244,7 @@ export function widgetSummary(
   gifts: GiftRow[],
   days: number,
   people: WidgetPerson[] = [],
+  groups: WidgetGroup[] = [],
 ): WidgetSummary {
   const hasBudget = Number(household.budget) > 0;
   const leftCents = leftToSpend(household.budget, gifts);
@@ -200,5 +257,6 @@ export function widgetSummary(
     leftCents,
     leftText: hasBudget ? `${leftCents < 0 ? '-' : ''}${dollars(leftCents)}` : '',
     people,
+    groups,
   };
 }

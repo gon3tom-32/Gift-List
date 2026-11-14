@@ -9,6 +9,7 @@ import {
   isMilestone,
   leftToSpend,
   shorten,
+  widgetGroups,
   widgetPeople,
   widgetSummary,
   avatarColor,
@@ -98,7 +99,7 @@ describe('widgetSummary', () => {
   ];
   it('counts open gifts and money left, with no names', () => {
     const w = widgetSummary({ name: 'Gift List 2026', budget: 1000 }, gifts, 63);
-    expect(w).toEqual({ name: 'Gift List 2026', days: 63, open: 2, ideas: 1, hasBudget: true, leftCents: 100000 - 2500 - 4550 - 1000, leftText: '$919.50', people: [] });
+    expect(w).toEqual({ name: 'Gift List 2026', days: 63, open: 2, ideas: 1, hasBudget: true, leftCents: 100000 - 2500 - 4550 - 1000, leftText: '$919.50', people: [], groups: [] });
   });
   it('shows a minus when over budget and nothing when there is no budget', () => {
     expect(widgetSummary({ name: 'x', budget: 50 }, gifts, 5).leftText).toBe('-$30.50');
@@ -161,5 +162,59 @@ describe('widgetPeople', () => {
     // Pinned to what src/components/Avatar.tsx gives "Bella"; change both together.
     expect(avatarColor('Bella')).toBe('#2a7d4f');
     expect(avatarColor('Bella')).toMatch(/^#[0-9a-f]{6}$/);
+  });
+});
+
+describe('widgetGroups', () => {
+  const groups = [
+    { id: 'fam', name: 'Our family' },
+    { id: 'kids', name: 'Kids' },
+    { id: 'work', name: 'Coworkers' },
+    { id: 'empty', name: 'Pets' },
+  ];
+  const people = [
+    { id: 'mom', name: 'Mom', group_id: 'fam' },
+    { id: 'dad', name: 'Dad', group_id: 'fam' },
+    { id: 'emma', name: 'Emma', group_id: 'kids' },
+    { id: 'noah', name: 'Noah', group_id: 'kids' },
+    { id: 'teachers', name: 'Teachers', group_id: 'work' }, // a group of 13 people is one entry
+    { id: 'aides', name: 'Aides', group_id: 'work' },
+  ];
+  const gifts = [
+    { id: 'g1', person_id: 'mom', status: 'wrapped' },
+    { id: 'g2', person_id: 'dad', status: 'given' },
+    { id: 'g3', person_id: 'emma', status: 'idea' },
+    { id: 'g4', person_id: 'teachers', status: 'ordered' },
+  ];
+
+  it('counts people still waiting, most first, and leaves empty groups out', () => {
+    const out = widgetGroups(groups, people, gifts, []);
+    expect(out.map((g) => [g.name, g.total, g.remaining])).toEqual([
+      ['Kids', 2, 2], // an idea and nothing yet
+      ['Coworkers', 2, 1], // Teachers bought, Aides nothing
+      ['Our family', 2, 0], // everyone has a gift bought
+    ]);
+  });
+
+  it('counts a gift shared with several people for each of them', () => {
+    const shared = [{ id: 'tin', person_id: 'teachers', status: 'ordered' }];
+    const out = widgetGroups(groups, people, shared, [{ gift_id: 'tin', person_id: 'aides' }]);
+    expect(out.find((g) => g.name === 'Coworkers')?.remaining).toBe(0);
+  });
+
+  it('gives each group an initial and a colour, cuts long names and orders ties A to Z', () => {
+    const out = widgetGroups([{ id: 'a', name: 'Extended family and friends' }, { id: 'b', name: 'Book club' }], [
+      { id: 'x', name: 'X', group_id: 'a' },
+      { id: 'y', name: 'Y', group_id: 'b' },
+    ], [], []);
+    expect(out.map((g) => g.name)).toEqual(['Book club', 'Extended fam']);
+    expect(out[0].initial).toBe('B');
+    expect(out[0].color).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  it('shows at most six groups', () => {
+    const many = Array.from({ length: 9 }, (_, i) => ({ id: `g${i}`, name: `Group ${i}` }));
+    const ppl = many.map((g) => ({ id: `p-${g.id}`, name: 'P', group_id: g.id }));
+    expect(widgetGroups(many, ppl, [], [])).toHaveLength(6);
   });
 });

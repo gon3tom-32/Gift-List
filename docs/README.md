@@ -8,6 +8,7 @@ One short file per feature: what it does, how it works, where the code lives, th
 | Export my list and delete my account | [account-data.md](account-data.md) |
 | Groups of people with a headcount (Teachers x12) | [group-recipients.md](group-recipients.md) |
 | Minimize groups on the People screen | [collapse-groups.md](collapse-groups.md) |
+| Phone widget (Scriptable): countdown, groups that still need gifts | [phone-widget.md](phone-widget.md) |
 | Landing page for signed-out visitors (real screens, made-up family) | [landing-page.md](landing-page.md) |
 | Sign-up for anyone, separate lists, per-list limits, sign-in email setup | [sign-up-and-limits.md](sign-up-and-limits.md) |
 
@@ -16,7 +17,6 @@ One short file per feature: what it does, how it works, where the code lives, th
 These exist in the app but do not have their own page yet:
 
 - Push notifications (partner activity, over-budget alert, Christmas countdown)
-- The phone widget (Scriptable script and private summary link)
 - Gifts shared between several people (split cost)
 - Undo and Duplicate
 - "New from your partner" markers

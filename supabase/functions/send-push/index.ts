@@ -24,6 +24,7 @@ import {
   daysUntilChristmas,
   isMilestone,
   leftToSpend,
+  widgetGroups,
   widgetPeople,
   widgetSummary,
   type GiftRow,
@@ -197,13 +198,15 @@ async function handleWidget(token: string | null): Promise<Response> {
   );
   if (!household) return reply({ error: 'No list found' }, 404);
   const hid = mine.household_id;
-  const [gifts, people, extras] = await Promise.all([
+  const [gifts, people, extras, groups] = await Promise.all([
     getJson<(GiftRow & WidgetGift)[]>(`gifts?household_id=eq.${hid}&select=id,person_id,status,estimate,paid`),
-    getJson<{ id: string; name: string }[]>(`people?household_id=eq.${hid}&select=id,name`),
+    getJson<{ id: string; name: string; group_id: string }[]>(`people?household_id=eq.${hid}&select=id,name,group_id`),
     getJson<{ gift_id: string; person_id: string }[]>(`gift_recipients?household_id=eq.${hid}&select=gift_id,person_id`),
+    getJson<{ id: string; name: string }[]>(`gift_groups?household_id=eq.${hid}&select=id,name`),
   ]);
   const tiles = widgetPeople(people, gifts, extras);
-  const body = JSON.stringify(widgetSummary(household, gifts, daysUntilChristmas(new Date()), tiles));
+  const groupTiles = widgetGroups(Array.isArray(groups) ? groups : [], people, gifts, extras);
+  const body = JSON.stringify(widgetSummary(household, gifts, daysUntilChristmas(new Date()), tiles, groupTiles));
   return new Response(body, { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 }
 
