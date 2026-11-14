@@ -8,7 +8,7 @@ export function TopBar({ onSettings }: { onSettings: () => void }) {
       <div className="top-bar-inner">
         <a className="top-bar-brand" href="#/">
           <Logo />
-          <span className="top-bar-name">Gift-List</span>
+          <span className="top-bar-name">Gift List</span>
         </a>
         <button type="button" className="icon-btn top-bar-btn" onClick={onSettings} aria-label="Settings">
           <Icon name="menu" size={24} />

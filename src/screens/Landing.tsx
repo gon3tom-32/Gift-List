@@ -78,7 +78,7 @@ export function Landing({ notice }: { notice?: string | null }) {
       <header className="landing-bar">
         <div className="landing-brand">
           <Logo size={36} />
-          <span className="landing-name">Gift-List</span>
+          <span className="landing-name">Gift List</span>
         </div>
         <button type="button" className="btn small" onClick={goToSignIn}>
           Sign in
