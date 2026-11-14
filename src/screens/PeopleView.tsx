@@ -7,6 +7,7 @@ import { STARTERS } from '../lib/starters';
 import { isOpen } from '../lib/status';
 import type { GroupIcon, Person } from '../lib/types';
 import { formatCents, type Totals } from '../lib/money';
+import { useCollapsedGroups } from '../lib/collapsed';
 import { Icon } from '../components/Icon';
 import { PersonCard } from '../components/Cards';
 import { BudgetBar } from '../components/BudgetBar';
@@ -24,6 +25,9 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
     () => [...data.groups].sort((a, b) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at)),
     [data.groups],
   );
+
+  const groupIds = useMemo(() => groups.map((g) => g.id), [groups]);
+  const folded = useCollapsedGroups(groupIds);
 
   // A shared gift counts for every person it is for.
   const giftStats = useMemo(() => {
@@ -78,6 +82,16 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
 
   return (
     <div className="groups">
+      {groups.length > 1 && (
+        <div className="group-fold-all">
+          <button type="button" className="btn link small" onClick={folded.collapseAll} disabled={folded.count === groups.length}>
+            Collapse all
+          </button>
+          <button type="button" className="btn link small" onClick={folded.expandAll} disabled={folded.count === 0}>
+            Expand all
+          </button>
+        </div>
+      )}
       {groups.map((group) => {
         const people = data.people
           .filter((p) => p.group_id === group.id)
@@ -102,9 +116,26 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
             />
           );
         };
+        const isFolded = folded.isCollapsed(group.id);
+        const groupTotal = totals.spent + totals.planned;
+        const overBudget = group.budget !== null && groupTotal > group.budget;
         return (
-          <section key={group.id} className="group" aria-labelledby={`group-${group.id}`}>
+          <section
+            key={group.id}
+            className={`group${isFolded ? ' is-collapsed' : ''}`}
+            aria-labelledby={`group-${group.id}`}
+          >
             <div className="group-head">
+              <button
+                type="button"
+                className="icon-btn group-fold"
+                onClick={() => folded.toggle(group.id)}
+                aria-expanded={!isFolded}
+                aria-controls={`group-body-${group.id}`}
+                aria-label={`${isFolded ? 'Expand' : 'Collapse'} ${group.name}`}
+              >
+                <Icon name="chevron" size={20} />
+              </button>
               <span className={`group-icon icon-${group.icon}`} data-tone={String(groups.indexOf(group) % 5)} aria-hidden="true">
                 <Icon name={group.icon} />
               </span>
@@ -115,6 +146,12 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
                 <p className="small muted">
                   {heads(people)} {heads(people) === 1 ? 'person' : 'people'}
                   {families.length > 0 && ` · ${families.length} ${families.length === 1 ? 'family' : 'families'}`}
+                  {isFolded && groupTotal > 0 && (
+                    <>
+                      {` · ${formatCents(groupTotal, { whole: true })}`}
+                      {overBudget && <span className="over"> · over budget</span>}
+                    </>
+                  )}
                 </p>
               </div>
               <div className="group-actions">
@@ -147,66 +184,68 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
                 </button>
               </div>
             </div>
-            <BudgetBar budget={group.budget} totals={totals} label={group.name} />
+            <div id={`group-body-${group.id}`} className="group-body" hidden={isFolded}>
+              <BudgetBar budget={group.budget} totals={totals} label={group.name} />
 
-            {families.map((fam) => {
-              const members = people.filter((p) => p.family_id === fam.id);
-              const famTotals = sumTotals(members.map((p) => tools.totalsByPerson.get(p.id)));
-              const famGifts = members.reduce((n, p) => n + (giftStats.get(p.id)?.count ?? 0), 0);
-              const famOpen = members.reduce((n, p) => n + (giftStats.get(p.id)?.open ?? 0), 0);
-              return (
-                <section key={fam.id} className="family" aria-labelledby={`family-${fam.id}`}>
-                  <div className="family-head">
-                    <span className="family-icon" aria-hidden="true">
-                      <Icon name="home" size={16} />
-                    </span>
-                    <div className="family-title">
-                      <h3 id={`family-${fam.id}`} className="h4">
-                        {fam.name}
-                      </h3>
-                      <p className="small muted">
-                        {heads(members)} {heads(members) === 1 ? 'person' : 'people'}
-                        {famGifts > 0 && ` · ${famGifts} gift${famGifts === 1 ? '' : 's'}`}
-                        {famOpen > 0 && ` · ${famOpen} open`}
-                        {famTotals.spent + famTotals.planned > 0 &&
-                          ` · ${formatCents(famTotals.spent + famTotals.planned, { whole: true })}`}
-                      </p>
+              {families.map((fam) => {
+                const members = people.filter((p) => p.family_id === fam.id);
+                const famTotals = sumTotals(members.map((p) => tools.totalsByPerson.get(p.id)));
+                const famGifts = members.reduce((n, p) => n + (giftStats.get(p.id)?.count ?? 0), 0);
+                const famOpen = members.reduce((n, p) => n + (giftStats.get(p.id)?.open ?? 0), 0);
+                return (
+                  <section key={fam.id} className="family" aria-labelledby={`family-${fam.id}`}>
+                    <div className="family-head">
+                      <span className="family-icon" aria-hidden="true">
+                        <Icon name="home" size={16} />
+                      </span>
+                      <div className="family-title">
+                        <h3 id={`family-${fam.id}`} className="h4">
+                          {fam.name}
+                        </h3>
+                        <p className="small muted">
+                          {heads(members)} {heads(members) === 1 ? 'person' : 'people'}
+                          {famGifts > 0 && ` · ${famGifts} gift${famGifts === 1 ? '' : 's'}`}
+                          {famOpen > 0 && ` · ${famOpen} open`}
+                          {famTotals.spent + famTotals.planned > 0 &&
+                            ` · ${formatCents(famTotals.spent + famTotals.planned, { whole: true })}`}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        onClick={() => tools.openSheet({ kind: 'family', id: fam.id, groupId: group.id })}
+                        aria-label={`Edit ${fam.name}`}
+                      >
+                        <Icon name="edit" size={16} />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      className="icon-btn"
-                      onClick={() => tools.openSheet({ kind: 'family', id: fam.id, groupId: group.id })}
-                      aria-label={`Edit ${fam.name}`}
-                    >
-                      <Icon name="edit" size={16} />
-                    </button>
-                  </div>
-                  {members.length > 0 ? (
-                    <div className="people-grid">{members.map(renderPerson)}</div>
-                  ) : (
-                    <p className="small muted">No one yet. Tap the add-person icon above and pick this family.</p>
-                  )}
-                </section>
-              );
-            })}
+                    {members.length > 0 ? (
+                      <div className="people-grid">{members.map(renderPerson)}</div>
+                    ) : (
+                      <p className="small muted">No one yet. Tap the add-person icon above and pick this family.</p>
+                    )}
+                  </section>
+                );
+              })}
 
-            {loose.length > 0 && <div className="people-grid">{loose.map(renderPerson)}</div>}
-            {people.length === 0 && (
-              // An empty group still gets a big, obvious way to start.
-              <div className="people-grid">
-                <button
-                  type="button"
-                  className="person-card add"
-                  onClick={() => tools.openSheet({ kind: 'person', groupId: group.id })}
-                >
-                  <span className="avatar add-avatar" aria-hidden="true">
-                    <Icon name="plus" />
-                  </span>
-                  <span className="person-name">Add person</span>
-                  <span className="small muted">to {group.name}</span>
-                </button>
-              </div>
-            )}
+              {loose.length > 0 && <div className="people-grid">{loose.map(renderPerson)}</div>}
+              {people.length === 0 && (
+                // An empty group still gets a big, obvious way to start.
+                <div className="people-grid">
+                  <button
+                    type="button"
+                    className="person-card add"
+                    onClick={() => tools.openSheet({ kind: 'person', groupId: group.id })}
+                  >
+                    <span className="avatar add-avatar" aria-hidden="true">
+                      <Icon name="plus" />
+                    </span>
+                    <span className="person-name">Add person</span>
+                    <span className="small muted">to {group.name}</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </section>
         );
       })}
