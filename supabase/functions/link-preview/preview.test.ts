@@ -271,3 +271,32 @@ describe('Amazon phone page fallback (the main page answers servers with a 503)'
     expect(mergeAmazon(blocked, phoneBlocked, asin)).toEqual(blocked);
   });
 });
+
+describe('Amazon phone page: pick the real product photo', () => {
+  // From a real page: a small unrelated picture with data-a-hires came first on the page,
+  // and the product's own main-image tag came later.
+  const html = `<html><head><title>Amazon.com: Clemas Kids Toy Golf Set | Indoor Outdoor</title></head><body>
+    <div><img src="https://m.media-amazon.com/images/I/21f+uIHLN1L.jpg" data-a-hires="https://m.media-amazon.com/images/I/21f+uIHLN1L.jpg"></div>
+    <img alt="Clemas Kids Toy Golf Set" src="https://m.media-amazon.com/images/I/71R5ZclzmnL._AC_UF350,350_QL50_.jpg" data-fling-asin="B0F1CKN84T" data-fling-refmarker="detail_main_image_block" data-midres-replacement="https://m.media-amazon.com/images/I/71R5ZclzmnL._AC_UF350,350_QL80_.jpg" id="main-image" onload="setCSMReq('af')">
+    <ul><li data-a-hires="https://m.media-amazon.com/images/I/71akhC1XgHL._AC_UF894,1000_QL80_.jpg"></li></ul></body></html>`;
+
+  it('uses the main image tag, not an earlier unrelated picture', () => {
+    const p = parsePreview(html, 'https://www.amazon.com/gp/aw/d/B0F1CKN84T');
+    expect(p.image).toBe('https://m.media-amazon.com/images/I/71R5ZclzmnL._AC_SL1000_.jpg');
+    expect(p.title).toBe('Clemas Kids Toy Golf Set');
+  });
+
+  it('still finds the photo when the main tag has no hi-res attribute and the id comes last', () => {
+    const tag = '<img src="https://m.media-amazon.com/images/I/81abcDEF._AC_SX679_.jpg" alt="x" id="landingImage">';
+    expect(parsePreview(tag, 'https://www.amazon.com/dp/B0BBSBJ4YK').image).toBe(
+      'https://m.media-amazon.com/images/I/81abcDEF._AC_SL1000_.jpg',
+    );
+  });
+
+  it('keeps the old fallbacks when there is no main tag', () => {
+    const only = '<li data-a-hires="https://m.media-amazon.com/images/I/71akhC1XgHL._AC_UF894,1000_QL80_.jpg"></li>';
+    expect(parsePreview(only, 'https://www.amazon.com/dp/B0BBSBJ4YK').image).toBe(
+      'https://m.media-amazon.com/images/I/71akhC1XgHL._AC_SL1000_.jpg',
+    );
+  });
+});

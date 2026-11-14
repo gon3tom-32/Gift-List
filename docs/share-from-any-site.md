@@ -309,3 +309,6 @@ The phone version of the page, `https://www.amazon.com/gp/aw/d/<ASIN>`, is serve
 3. keeps the product-code photo only as a last resort, and cuts the title at the first " | " (the long feature list after it).
 
 How it was diagnosed: a temporary function fetched the pages from Supabase's network and was called from the database with `net.http_get`, so Amazon saw the same address as the real lookup. Amazon's blocking depends on where the request comes from, so test from there, not from a laptop. If it breaks again, repeat that.
+
+### Amazon: the wrong picture (second pitfall)
+On the phone page, small unrelated pictures (icons, badges) also carry `data-a-hires` and can appear **before** the product photo, so "first `data-a-hires` on the page" picked the wrong image. `amazonImageFromHtml` now looks for the main product `<img>` tag first (`id="main-image"`/`landingImage`, or `data-fling-refmarker="detail_main_image_block"`) and reads the picture from that tag only; the page-wide patterns are fallbacks. Tests use a trimmed copy of a real page where the unrelated picture comes first.
