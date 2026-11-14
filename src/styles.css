@@ -962,6 +962,34 @@ details.more[open] summary {
   align-items: center;
   gap: 10px;
 }
+.group-fold {
+  width: 36px;
+  height: 36px;
+  margin-left: -8px;
+  flex: none;
+}
+.group-fold svg {
+  transition: transform 0.15s ease;
+}
+.group-fold[aria-expanded='true'] svg {
+  transform: rotate(90deg);
+}
+.group.is-collapsed {
+  padding-block: 8px;
+}
+.group-body {
+  display: grid;
+  gap: 10px;
+}
+.group-body[hidden] {
+  display: none;
+}
+.group-fold-all {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  margin: -4px 0 -2px;
+}
 .group-head .family-title {
   flex: 1;
   min-width: 0;
