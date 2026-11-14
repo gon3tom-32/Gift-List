@@ -595,8 +595,9 @@ function WidgetSection() {
   return (
     <section className="stack">
       <p className="muted small">
-        Put your Christmas countdown, gifts still open and money left on your Home Screen or Lock Screen, using the free
-        Scriptable app.
+        Put your Christmas countdown, gifts still open, money left and which groups still need gifts on your Home Screen
+        or Lock Screen, using the free Scriptable app. Already have the widget? Copy the new script and paste it over the
+        old one to get the groups.
       </p>
       <ol className="steps small">
         <li>Install <strong>Scriptable</strong> from the App Store (free).</li>

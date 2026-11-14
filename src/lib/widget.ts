@@ -28,6 +28,8 @@ const SCRIPT = `// Gift List widget for Scriptable
 const LINK = __LINK__;
 const SITE = __SITE__;
 const MINT = "#18806a";
+// What the grid shows: "groups" (Our family, Kids, Coworkers...) or "people".
+const SHOW = "groups";
 
 async function load() {
   try {
@@ -41,7 +43,7 @@ async function load() {
   }
 }
 
-// A coloured circle with the person's initial and a small status badge, drawn into ctx.
+// A coloured circle with the person's (or group's) initial and a small badge, drawn into ctx.
 function drawAvatar(ctx, person, x, y, d) {
   ctx.setFillColor(new Color(person.color));
   ctx.fillEllipse(new Rect(x, y, d, d));
@@ -56,6 +58,26 @@ function drawAvatar(ctx, person, x, y, d) {
   const b = d * 0.36;
   const bx = x + d - b;
   const by = y + d - b;
+  if (typeof person.remaining === "number") {
+    // A group: a red number of people still waiting, or a green check when everyone has a gift.
+    const gb = d * 0.46;
+    const gx = x + d - gb + 2;
+    const gy = y + d - gb + 2;
+    const done = person.remaining === 0;
+    ctx.setFillColor(new Color(done ? "#bff0e3" : "#d94b5c"));
+    ctx.fillEllipse(new Rect(gx, gy, gb, gb));
+    ctx.setTextAlignedCenter();
+    if (done) {
+      ctx.setTextColor(new Color("#0f5e4e"));
+      ctx.setFont(Font.boldSystemFont(gb * 0.7));
+      ctx.drawTextInRect("\u2713", new Rect(gx, gy + gb * 0.08, gb, gb));
+    } else {
+      ctx.setTextColor(Color.white());
+      ctx.setFont(Font.boldRoundedSystemFont(gb * 0.62));
+      ctx.drawTextInRect(String(person.remaining), new Rect(gx, gy + gb * 0.16, gb, gb * 0.74));
+    }
+    return;
+  }
   if (person.status === "none") {
     ctx.setFillColor(new Color(MINT));
     ctx.fillEllipse(new Rect(bx, by, b, b));
@@ -155,7 +177,7 @@ function mediumSize() {
 }
 
 // The whole medium widget as one picture, so nothing can shift or clip.
-function drawMedium(data, people, open, left, days) {
+function drawMedium(data, items, open, left, days) {
   const size = mediumSize();
   const W = size[0];
   const H = size[1];
@@ -188,21 +210,21 @@ function drawMedium(data, people, open, left, days) {
     ctx.setTextColor(data.leftCents < 0 ? new Color("#ffd6e4") : Color.white());
     ctx.drawTextInRect(left, new Rect(12, 121, LW - 14, 17));
   }
-  // Right: the six people who most need a gift, in a 3 x 2 grid
+  // Right: the six groups (or people) who most need a gift, in a 3 x 2 grid
   const gx = LW + 6;
   const colW = (W - gx - 6) / 3;
   const rowH = (H - bar - 8) / 2;
   const d = 40;
-  for (let i = 0; i < 6 && i < people.length; i++) {
+  for (let i = 0; i < 6 && i < items.length; i++) {
     const col = i % 3;
     const row = Math.floor(i / 3);
     const cx = gx + col * colW + (colW - d) / 2;
     const cy = 8 + row * rowH + 6;
-    drawAvatar(ctx, people[i], cx, cy, d);
+    drawAvatar(ctx, items[i], cx, cy, d);
     ctx.setTextAlignedCenter();
     ctx.setFont(Font.semiboldRoundedSystemFont(11));
     ctx.setTextColor(Color.white());
-    ctx.drawTextInRect(people[i].name, new Rect(gx + col * colW, cy + d + 3, colW, 15));
+    ctx.drawTextInRect(items[i].name, new Rect(gx + col * colW, cy + d + 3, colW, 15));
   }
   drawStripe(ctx, W, H - bar, bar);
   return { image: ctx.getImage(), W: W, H: H, LW: LW, bar: bar, gx: gx, colW: colW, rowH: rowH };
@@ -227,6 +249,8 @@ const days = data ? (data.days === 0 ? "Merry Christmas!" : data.days + (data.da
 const open = data ? data.open + (data.open === 1 ? " gift open" : " gifts open") : "";
 const left = data && data.hasBudget ? data.leftText + " left" : "";
 const people = data && data.people ? data.people : [];
+// Groups when the server sends them (and the script asks for them); the people grid otherwise.
+const items = SHOW === "people" || !data || !data.groups || data.groups.length === 0 ? people : data.groups;
 
 if (family.indexOf("accessory") === 0) {
   w.addAccessoryWidgetBackground = true;
@@ -237,12 +261,12 @@ if (family.indexOf("accessory") === 0) {
     add(w, days + " to go", 15, "bold");
     add(w, open, 12, "semibold");
   }
-} else if (family === "medium" && data && people.length > 0) {
-  const m = drawMedium(data, people, open, left, days);
+} else if (family === "medium" && data && items.length > 0) {
+  const m = drawMedium(data, items, open, left, days);
   w.backgroundImage = m.image;
   w.setPadding(0, 0, 0, 0);
   w.spacing = 0;
-  // Invisible tap targets over each person; tapping anywhere else opens the site.
+  // Invisible tap targets over each person (groups open the app); tapping anywhere else opens the site.
   const row = w.addStack();
   row.layoutHorizontally();
   row.size = new Size(m.W, m.H - m.bar);
@@ -257,10 +281,10 @@ if (family.indexOf("accessory") === 0) {
     line.layoutHorizontally();
     line.size = new Size(m.W - m.gx, m.rowH);
     for (let c = 0; c < 3; c++) {
-      const person = people[r * 3 + c];
+      const person = items[r * 3 + c];
       const tile = line.addStack();
       tile.size = new Size(m.colW, m.rowH);
-      if (person) tile.url = SITE + "#/person/" + person.id;
+      if (person && typeof person.remaining !== "number") tile.url = SITE + "#/person/" + person.id;
     }
   }
 } else {
