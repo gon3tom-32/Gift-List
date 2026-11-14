@@ -25,13 +25,13 @@ Photos are also limited by the `gift-photos` bucket: 5 MB, JPEG/WebP/PNG. The ap
 Supabase's built-in email is tiny (a few emails per hour) and meant for testing. Before sharing widely:
 
 1. **Email service.** Make a free account with an email service such as Resend. Verify a sending domain, or at least a sender address.
-2. **SMTP.** Supabase dashboard, Authentication, Emails, SMTP Settings: turn on custom SMTP, paste the host, port, username and password from the email service, sender name "Gift-List".
+2. **SMTP.** Supabase dashboard, Authentication, Emails, SMTP Settings: turn on custom SMTP, paste the host, port, username and password from the email service, sender name "Gift List".
 3. **Rate limit.** Authentication, Rate Limits: raise "emails sent per hour" (for example to 100).
-4. **Friendlier email.** Authentication, Emails, Templates, "Magic Link". Suggested subject: `Your Gift-List sign-in link`. Suggested body:
+4. **Friendlier email.** Authentication, Emails, Templates, "Magic Link". Suggested subject: `Your Gift List sign-in link`. Suggested body:
    ```html
    <h2>Ho ho hello!</h2>
-   <p>Tap the button to open your Gift-List.</p>
-   <p><a href="{{ .ConfirmationURL }}">Open my Gift-List</a></p>
+   <p>Tap the button to open your Gift List.</p>
+   <p><a href="{{ .ConfirmationURL }}">Open my Gift List</a></p>
    <p>If you didn't ask for this, you can ignore this email.</p>
    ```
    Do the same for the "Confirm signup" template.

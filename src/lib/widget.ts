@@ -24,7 +24,7 @@ export async function requestWidgetLink(): Promise<string> {
   return body.url;
 }
 
-const SCRIPT = `// Gift-List widget for Scriptable
+const SCRIPT = `// Gift List widget for Scriptable
 const LINK = __LINK__;
 const SITE = __SITE__;
 const MINT = "#18806a";
@@ -142,7 +142,7 @@ function title(stack, size) {
   const mark = row.addImage(logo(44));
   mark.imageSize = new Size(size + 6, size + 6);
   row.addSpacer(5);
-  add(row, "Gift-List", size, "semibold", new Color("#ffffff", 0.92));
+  add(row, "Gift List", size, "semibold", new Color("#ffffff", 0.92));
   return row;
 }
 
@@ -174,7 +174,7 @@ function drawMedium(data, people, open, left, days) {
   ctx.setTextAlignedLeft();
   ctx.setFont(Font.semiboldRoundedSystemFont(13));
   ctx.setTextColor(new Color("#ffffff", 0.92));
-  ctx.drawTextInRect("Gift-List", new Rect(37, 13, LW - 42, 18));
+  ctx.drawTextInRect("Gift List", new Rect(37, 13, LW - 42, 18));
   ctx.setFont(Font.boldRoundedSystemFont(40));
   ctx.setTextColor(Color.white());
   ctx.drawTextInRect(String(data.days), new Rect(12, 38, LW - 16, 46));
@@ -230,7 +230,7 @@ const people = data && data.people ? data.people : [];
 
 if (family.indexOf("accessory") === 0) {
   w.addAccessoryWidgetBackground = true;
-  add(w, "Gift-List", 12, "semibold");
+  add(w, "Gift List", 12, "semibold");
   if (!data) {
     add(w, "Can't reach it", 13, "semibold");
   } else {
@@ -269,7 +269,7 @@ if (family.indexOf("accessory") === 0) {
   title(w, 13);
   w.addSpacer(4);
   if (!data) {
-    add(w, "Can't reach Gift-List", 15, "semibold", Color.white());
+    add(w, "Can't reach Gift List", 15, "semibold", Color.white());
   } else {
     add(w, days, family === "small" ? 34 : 42, "bold", Color.white());
     add(w, data.days === 0 ? "" : "to Christmas", 14, "semibold", new Color("#ffffff", 0.9));

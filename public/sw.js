@@ -1,6 +1,6 @@
 // Shows push notifications and opens the app when one is tapped.
 self.addEventListener('push', (event) => {
-  let data = { title: 'Gift-List', body: '' };
+  let data = { title: 'Gift List', body: '' };
   try {
     data = { ...data, ...event.data.json() };
   } catch {

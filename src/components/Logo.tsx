@@ -1,4 +1,4 @@
-/** The Gift-List mark: a hang tag with a small present, in a mint tile. */
+/** The Gift List mark: a hang tag with a small present, in a mint tile. */
 export function Logo({ size = 38 }: { size?: number }) {
   return (
     <span className="logo" style={{ width: size, height: size }} aria-hidden="true">

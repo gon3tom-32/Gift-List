@@ -76,7 +76,7 @@ export function SignIn({ notice, embedded }: { notice?: string | null; embedded?
         <div className="signin-badge" aria-hidden="true">
           <Icon name="gift" size={40} />
         </div>
-        <h1 className="display">Gift-List</h1>
+        <h1 className="display">Gift List</h1>
         <p className="muted">{countdownText()}. Let's get the list sorted together.</p>
 
         {state === 'sent' ? (
@@ -163,7 +163,7 @@ export function SignIn({ notice, embedded }: { notice?: string | null; embedded?
       </div>
 
       {!embedded && (
-        <section className="how-it-works" aria-label="How Gift-List works">
+        <section className="how-it-works" aria-label="How Gift List works">
           <h2 className="h4">How it works</h2>
           <ol>
             <li>
