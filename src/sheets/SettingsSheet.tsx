@@ -488,13 +488,13 @@ function NotificationsSection({ householdId, userId }: { householdId: string; us
     <section className="stack section">
       {state === 'needs-install' && (
         <p className="muted small">
-          On iPhone, notifications only work from the Gift-List app on your Home Screen. Open it from there, then come
+          On iPhone, notifications only work from the Gift List app on your Home Screen. Open it from there, then come
           back to this switch.
         </p>
       )}
       {state === 'unsupported' && <p className="muted small">This phone's browser can't show notifications.</p>}
       {state === 'denied' && (
-        <p className="muted small">Notifications are blocked for Gift-List. Turn them on in your phone's settings.</p>
+        <p className="muted small">Notifications are blocked for Gift List. Turn them on in your phone's settings.</p>
       )}
       {(state === 'off' || state === 'on') && (
         <>
@@ -513,7 +513,7 @@ function NotificationsSection({ householdId, userId }: { householdId: string; us
   );
 }
 
-/** How to set up the iPhone Shortcut that shares shop pages into Gift-List. */
+/** How to set up the iPhone Shortcut that shares shop pages into Gift List. */
 function ShareShortcutHelp() {
   const address = `${window.location.origin}${import.meta.env.BASE_URL}#/add?url=`;
   const [copied, setCopied] = useState(false);
@@ -531,12 +531,12 @@ function ShareShortcutHelp() {
   return (
     <section className="stack section">
       <p className="muted small">
-        Set this up once on each phone. Then on any shop page, tap <strong>Share → Gift-List</strong> and the idea opens
+        Set this up once on each phone. Then on any shop page, tap <strong>Share → Gift List</strong> and the idea opens
         here with the link filled in.
       </p>
       <ol className="steps small">
         <li>
-          Open the <strong>Shortcuts</strong> app, tap <strong>+</strong>, and name it <strong>Gift-List</strong>.
+          Open the <strong>Shortcuts</strong> app, tap <strong>+</strong>, and name it <strong>Gift List</strong>.
         </li>
         <li>
           Tap the <strong>ⓘ</strong> details and turn on <strong>Show in Share Sheet</strong>. Set it to receive{' '}
@@ -554,11 +554,11 @@ function ShareShortcutHelp() {
         </li>
       </ol>
       <label className="field">
-        <span>Gift-List address for step 4</span>
+        <span>Gift List address for step 4</span>
         <input readOnly value={address} onFocus={(e) => e.currentTarget.select()} />
       </label>
       <button type="button" className="btn small" onClick={() => void copy()}>
-        {copied ? 'Copied!' : 'Copy the Gift-List address'}
+        {copied ? 'Copied!' : 'Copy the Gift List address'}
       </button>
     </section>
   );
@@ -601,8 +601,8 @@ function WidgetSection() {
       <ol className="steps small">
         <li>Install <strong>Scriptable</strong> from the App Store (free).</li>
         <li>Tap <strong>Make my widget link</strong> below, then <strong>Copy script</strong>.</li>
-        <li>In Scriptable tap <strong>+</strong>, paste the script, and name it Gift-List.</li>
-        <li>On your Home Screen touch and hold, tap <strong>+</strong>, pick <strong>Scriptable</strong>, add a widget, then tap it and choose the Gift-List script.</li>
+        <li>In Scriptable tap <strong>+</strong>, paste the script, and name it Gift List.</li>
+        <li>On your Home Screen touch and hold, tap <strong>+</strong>, pick <strong>Scriptable</strong>, add a widget, then tap it and choose the Gift List script.</li>
       </ol>
       <button type="button" className="btn primary" disabled={busy} onClick={() => void make()}>
         {busy ? 'Making…' : script ? 'Make a new link' : 'Make my widget link'}

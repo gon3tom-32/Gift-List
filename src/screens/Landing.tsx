@@ -40,14 +40,14 @@ const FEATURES: Feature[] = [
   {
     icon: 'link',
     title: 'Share from any shop in two taps',
-    text: 'Found it online? Share the page to Gift-List and the name, store and link are filled in for you. Just pick who it is for.',
+    text: 'Found it online? Share the page to Gift List and the name, store and link are filled in for you. Just pick who it is for.',
     image: 'screen-add.webp',
     alt: 'The new gift idea form already filled in from a shared shop link',
   },
   {
     icon: 'settings',
     title: 'Made for both of you',
-    text: 'Invite your partner and you both see and edit the same list, live. Turn on notifications, add the phone widget and put Gift-List on your Home Screen.',
+    text: 'Invite your partner and you both see and edit the same list, live. Turn on notifications, add the phone widget and put Gift List on your Home Screen.',
     image: 'screen-settings.webp',
     alt: 'The settings menu with the list, who is on it, notifications, sharing and the phone widget',
   },
@@ -78,7 +78,7 @@ export function Landing({ notice }: { notice?: string | null }) {
       <header className="landing-bar">
         <div className="landing-brand">
           <Logo size={36} />
-          <span className="landing-name">Gift-List</span>
+          <span className="landing-name">Gift List</span>
         </div>
         <button type="button" className="btn small" onClick={goToSignIn}>
           Sign in
@@ -103,12 +103,12 @@ export function Landing({ notice }: { notice?: string | null }) {
               <p className="muted small">No app store. Works on any phone.</p>
             </div>
           </div>
-          <Phone src="screen-people.webp" alt="The Gift-List home screen with the Christmas countdown, budget and groups of people" eager />
+          <Phone src="screen-people.webp" alt="The Gift List home screen with the Christmas countdown, budget and groups of people" eager />
         </section>
 
         <div className="candy-rule" aria-hidden="true" />
 
-        <section className="landing-features" aria-label="What Gift-List does">
+        <section className="landing-features" aria-label="What Gift List does">
           {FEATURES.map((f, i) => (
             <article key={f.title} className={`landing-feature${i % 2 ? ' flip' : ''}`}>
               <div className="landing-feature-text">

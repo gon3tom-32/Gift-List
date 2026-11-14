@@ -1,4 +1,4 @@
-# Gift-List
+# Gift List
 
 A playful, shared Christmas gift list and budget for a couple. Both partners sign in and edit the same list: groups (family, pets, coworkers…), people, and gifts that move from **idea → ordered → shipped → wrapped → given**.
 
@@ -6,7 +6,7 @@ Built with Vite + React + TypeScript and Supabase (Postgres, Auth, Storage, Real
 
 ## Set up Supabase (once)
 
-1. Open your Gift-List project in Supabase → **SQL Editor**.
+1. Open your Gift List project in Supabase → **SQL Editor**.
 2. Paste and run [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql). It creates the tables, Row Level Security, the private `gift-photos` bucket, and Realtime. It's safe to run again.
 3. Optional check: paste and run [`supabase/tests/rls_test.sql`](supabase/tests/rls_test.sql). It should end with `ALL RLS TESTS PASSED`. It rolls itself back, so it leaves no test data.
 4. **Authentication → URL Configuration**: set **Site URL** to `https://gon3tom-32.github.io/Gift-List/` and add it, plus `http://localhost:5173/Gift-List/`, to **Redirect URLs**. Magic links only return to addresses on this list.

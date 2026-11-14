@@ -44,7 +44,7 @@ export async function pushState(): Promise<PushState> {
 
 /** Asks permission and saves this phone's push address. Must run from a tap. */
 export async function enablePush(householdId: string, userId: string): Promise<void> {
-  if (!canPush()) throw new Error('Notifications need the Gift-List app on your Home Screen.');
+  if (!canPush()) throw new Error('Notifications need the Gift List app on your Home Screen.');
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') throw new Error('Notifications are blocked. Turn them on in your phone settings.');
   const reg = await navigator.serviceWorker.ready;

@@ -1,4 +1,4 @@
-# Gift-List
+# Gift List
 
 A playful, shared Christmas gift list and budget app for a couple. Both partners sign in and see and edit the same household list. The list covers any gift recipients (family, kids, pets, coworkers, etc.), not just family.
 

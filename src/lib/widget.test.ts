@@ -125,7 +125,7 @@ describe('the widget script when it runs', () => {
     expect(out.urls).toContain('https://site.test/Gift-List/#/person/p1');
     expect(out.urls).toContain('https://site.test/Gift-List/#/person/p4');
     // The medium widget is drawn as one picture, so its words are drawn text rather than stack text.
-    expect(out.draws).toContain('Gift-List');
+    expect(out.draws).toContain('Gift List');
     expect(out.draws).toContain('63');
     expect(out.draws).toContain('5 gifts open');
     expect(out.draws).toContain('$892 left');

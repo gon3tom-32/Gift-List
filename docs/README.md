@@ -1,4 +1,4 @@
-# Gift-List docs
+# Gift List docs
 
 One short file per feature: what it does, how it works, where the code lives, the rules that matter, and the pitfalls we hit. When a feature is added or changed, its file is added or updated in the same pull request (see `CLAUDE.md`).
 

@@ -1,6 +1,6 @@
-# "Share to our app from any site": how Gift-List does it, and how to reuse it
+# "Share to our app from any site": how Gift List does it, and how to reuse it
 
-This guide explains the feature in Gift-List where you tap **Share** on any shop page, choose the app, and a new idea opens already filled in with the product's name, picture and price. It is written so the same idea can be rebuilt for another product, for example **sharing a vehicle listing from another site into an Autotrader / AI Mode experience**. Wherever Gift-List captures gift details, you would capture vehicle details instead.
+This guide explains the feature in Gift List where you tap **Share** on any shop page, choose the app, and a new idea opens already filled in with the product's name, picture and price. It is written so the same idea can be rebuilt for another product, for example **sharing a vehicle listing from another site into an Autotrader / AI Mode experience**. Wherever Gift List captures gift details, you would capture vehicle details instead.
 
 ---
 
@@ -27,7 +27,7 @@ The rule that holds it all together: **reading the page is a convenience, never 
 
 ## 2. Piece one: getting the link into the app
 
-### iPhone: a Shortcut in the Share Sheet (what Gift-List uses)
+### iPhone: a Shortcut in the Share Sheet (what Gift List uses)
 
 A web app saved to the Home Screen cannot register itself in the iPhone Share Sheet, so each person makes a tiny Shortcut once. The app's Settings screen shows these steps with a copy button for the address:
 
@@ -53,7 +53,7 @@ Android supports a real **Web Share Target**: add a `share_target` to the web ap
 }
 ```
 
-(Gift-List does not use this yet because iPhone is the main device. If the Autotrader audience includes Android, add it. Test the hash-route interaction on a real device.)
+(Gift List does not use this yet because iPhone is the main device. If the Autotrader audience includes Android, add it. Test the hash-route interaction on a real device.)
 
 ### Always keep a manual path
 
@@ -70,11 +70,11 @@ https://app.example/#/add?url=<link>          (preferred)
 https://app.example/#/add?text=<anything>     (some apps share text only)
 ```
 
-Gift-List uses a **hash route** (`#/…`) because it is hosted on GitHub Pages, so there is no server-side routing. With a real server you can use a normal path (`/add?url=`). Either way, parse it in one small, well-tested function.
+Gift List uses a **hash route** (`#/…`) because it is hosted on GitHub Pages, so there is no server-side routing. With a real server you can use a normal path (`/add?url=`). Either way, parse it in one small, well-tested function.
 
 ### Shared content is messy. Parse defensively
 
-Real shares look like: `Check out this car https://a.co/xyz`, or the link is encoded, or not, or contains its own `&`. Gift-List's `parseShare` handles it like this:
+Real shares look like: `Check out this car https://a.co/xyz`, or the link is encoded, or not, or contains its own `&`. Gift List's `parseShare` handles it like this:
 
 - If the query starts with `url=`, treat **everything after it** as the shared thing (even if it contains `&`).
 - Otherwise read `url` and `text` parameters.
@@ -116,7 +116,7 @@ When the app sees the `add` route and the user's data has loaded:
 
 ### The form: fast, forgiving, never blocked
 
-- **Only the minimum is required** (Gift-List: just a name. For vehicles: probably just the link, or year/make/model).
+- **Only the minimum is required** (Gift List: just a name. For vehicles: probably just the link, or year/make/model).
 - When a link is present, wait ~400 ms (debounce), then call the lookup. Show "Looking up the link…" in the field hint, not as a blocking spinner.
 - When the answer arrives, **fill only fields the person has not already touched** (a `touched` ref per field). Never overwrite typing.
 - Show where a value came from ("Price from Cars.com. Change it if you like.").
@@ -127,7 +127,7 @@ When the app sees the `add` route and the user's data has loaded:
 
 ## 4. Piece three: the server function that reads the page
 
-Browsers cannot read other sites' pages (CORS), so a small server function does it. Gift-List uses a **Supabase Edge Function** (Deno), but any serverless runtime works.
+Browsers cannot read other sites' pages (CORS), so a small server function does it. Gift List uses a **Supabase Edge Function** (Deno), but any serverless runtime works.
 
 ### API shape
 
@@ -140,7 +140,7 @@ Both require a **signed-in user** (check the session token inside the function).
 
 ### Safety rules (non-negotiable, because it fetches arbitrary URLs for strangers)
 
-This is an SSRF risk (server-side request forgery). Gift-List's rules:
+This is an SSRF risk (server-side request forgery). Gift List's rules:
 
 - Only `http`/`https`, standard ports (80/443), no `user:password@` in the URL.
 - Block `localhost`, `*.localhost`, `*.internal`.
@@ -161,7 +161,7 @@ Try the most reliable, most generic sources first; fall back to site-specific on
 1. **Open Graph / Twitter meta tags** (`og:title`, `og:image`, `og:site_name`, `product:price:amount`, `og:price:amount`).
 2. **JSON-LD structured data** in `<script type="application/ld+json">`. This is where listing sites usually put the good stuff. Parse it as JSON, walk the tree, and read the node whose `@type` is what you want. **Do not take "the first price anywhere on the page"**: Best Buy listed a protection plan before the product and we showed the wrong price. Scope to the product node's `offers`.
 3. **Microdata** (`itemprop="price"`) and `<link rel="image_src">`.
-4. **Site-specific parsers** for the sites that matter most (Gift-List has one for Amazon: phone-layout image attributes, the `a-offscreen` price block, ASIN). Keep each one small, with sample HTML in the tests.
+4. **Site-specific parsers** for the sites that matter most (Gift List has one for Amazon: phone-layout image attributes, the `a-offscreen` price block, ASIN). Keep each one small, with sample HTML in the tests.
 5. **Embedded page state** (some sites ship `"currentPrice":9.99` in a JSON blob).
 6. **Last resort:** an LLM extraction pass on the cleaned page text (see section 8).
 
@@ -196,7 +196,7 @@ share → deep link → form opens (link + hint filled)
 
 ## 6. What to capture for vehicle listings (Autotrader version)
 
-Gift-List captures: name, store, link, photo, estimate, status. For a vehicle listing, plan for something like:
+Gift List captures: name, store, link, photo, estimate, status. For a vehicle listing, plan for something like:
 
 | Field | Where it usually comes from |
 |---|---|
@@ -221,7 +221,7 @@ Design notes specific to vehicles:
 
 ## 7. Money and data rules worth copying
 
-- Store money as exact decimals (or whole cents), never floats. Gift-List keeps `numeric(12,2)` in Postgres and whole cents in the app.
+- Store money as exact decimals (or whole cents), never floats. Gift List keeps `numeric(12,2)` in Postgres and whole cents in the app.
 - Row-level security on every table; every policy checks membership. Add a test for each new table.
 - Photos in a private bucket; save paths, create short-lived signed URLs when displaying.
 - Keep list data out of `localStorage`; use it only for tiny per-device conveniences.
@@ -289,7 +289,7 @@ The extraction pipeline gives AI Mode something much better than a raw link: **a
 
 ---
 
-### Where the Gift-List code lives (for reference)
+### Where the Gift List code lives (for reference)
 
 | Part | File |
 |---|---|

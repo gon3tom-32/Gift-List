@@ -1,6 +1,6 @@
 {
-  "name": "Gift-List",
-  "short_name": "Gift-List",
+  "name": "Gift List",
+  "short_name": "Gift List",
   "description": "Our shared Christmas gift list and budget",
   "start_url": "/Gift-List/",
   "scope": "/Gift-List/",
