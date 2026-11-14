@@ -189,6 +189,16 @@ function amazonImageFromHtml(html: string): string | null {
     const hit = re.exec(html)?.[1];
     return hit ? decodeEntities(hit) : null;
   };
+  // The tag of the main product photo comes first. Other pictures on the phone page (icons,
+  // badges, related items) can also carry data-a-hires and may appear before it.
+  const mainTag = [...html.matchAll(/<img\b[^>]*>/gi)]
+    .map((m) => m[0])
+    .find((tag) => /\sid=["'](?:main-image|landingImage|imgBlkFront)["']|data-fling-refmarker=["']detail_main_image_block["']/i.test(tag));
+  if (mainTag) {
+    const inTag = (name: string) => new RegExp(`\\s${name}=["'](https:\\/\\/[^"']+)["']`, 'i').exec(mainTag)?.[1];
+    const hit = inTag('data-old-hires') ?? inTag('data-a-hires') ?? inTag('data-midres-replacement') ?? inTag('src');
+    if (hit) return largerAmazonImage(decodeEntities(hit));
+  }
   // Desktop: <img id="landingImage" data-old-hires="…" data-a-dynamic-image="{&quot;…&quot;:[…]}">
   const found =
     attr(/data-old-hires=["'](https:\/\/[^"']+)["']/i) ??
