@@ -11,9 +11,10 @@ import { PhotoPicker } from '../components/PhotoPicker';
 import { deletePhoto, uploadPhoto } from '../lib/photos';
 import { buildWidgetScript, requestWidgetLink } from '../lib/widget';
 import { buildCsv, downloadCsv, exportFileName } from '../lib/exportCsv';
+import { applyTheme, readTheme, saveTheme, THEMES, THEME_LABELS, type Theme } from '../lib/theme';
 import { disablePush, enablePush, pushState, sendTestPush, type PushState } from '../lib/push';
 
-export type SettingsView = 'menu' | 'list' | 'people' | 'notifications' | 'shortcut' | 'widget' | 'password' | 'account';
+export type SettingsView = 'menu' | 'list' | 'people' | 'notifications' | 'shortcut' | 'widget' | 'password' | 'account' | 'look';
 
 const PAGE_TITLES: Record<SettingsView, string> = {
   menu: 'Settings',
@@ -24,10 +25,17 @@ const PAGE_TITLES: Record<SettingsView, string> = {
   widget: 'Phone widget',
   password: 'Sign-in and password',
   account: 'Your data and account',
+  look: 'Look',
 };
 
 export function SettingsSheet({ onClose, view = 'menu' }: { onClose: () => void; view?: SettingsView }) {
   const [page, setPage] = useState<SettingsView>(view);
+  const [theme, setTheme] = useState<Theme>(() => readTheme());
+  function chooseTheme(t: Theme) {
+    setTheme(t);
+    saveTheme(t);
+    applyTheme(t);
+  }
   const [pushOn, setPushOn] = useState<PushState | null>(null);
   useEffect(() => {
     void pushState().then(setPushOn);
@@ -168,6 +176,7 @@ export function SettingsSheet({ onClose, view = 'menu' }: { onClose: () => void;
     widget: 'Countdown on your Home Screen',
     password: 'Sign in with email and password',
     account: 'Download your list',
+    look: THEME_LABELS[theme],
   };
   const rows: { id: Exclude<SettingsView, 'menu'>; icon: IconName }[] = [
     { id: 'list', icon: 'gift' },
@@ -177,6 +186,7 @@ export function SettingsSheet({ onClose, view = 'menu' }: { onClose: () => void;
     { id: 'widget', icon: 'star' },
     { id: 'password', icon: 'edit' },
     { id: 'account', icon: 'list' },
+    { id: 'look', icon: 'sparkle' },
   ];
 
   return (
@@ -211,6 +221,26 @@ export function SettingsSheet({ onClose, view = 'menu' }: { onClose: () => void;
             </button>
           </section>
         </>
+      )}
+
+      {page === 'look' && (
+        <section className="stack" aria-label="Look">
+          <p className="muted">Pick how Gift List looks on this phone. Your partner can pick their own.</p>
+          <div className="theme-choices">
+            {THEMES.map((t) => (
+              <button
+                key={t}
+                type="button"
+                className={`theme-choice theme-${t}`}
+                aria-pressed={theme === t}
+                onClick={() => chooseTheme(t)}
+              >
+                <span className="theme-swatch" aria-hidden="true" />
+                <strong>{THEME_LABELS[t]}</strong>
+              </button>
+            ))}
+          </div>
+        </section>
       )}
 
       {page === 'list' && (

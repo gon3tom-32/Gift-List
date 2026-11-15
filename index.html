@@ -22,6 +22,14 @@
     <meta property="og:image" content="https://gon3tom-32.github.io/Gift-List/landing/screen-people.webp" />
     <meta name="twitter:card" content="summary" />
     <title>Gift List</title>
+    <script>
+      try {
+        if (localStorage.getItem('gift-list-theme') === 'hawaii') {
+          document.documentElement.setAttribute('data-theme', 'hawaii');
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0f4442');
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

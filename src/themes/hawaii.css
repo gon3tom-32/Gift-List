@@ -1,0 +1,138 @@
+/* Hawaiian Christmas. Every rule is scoped to data-theme='hawaii', so Classic is untouched.
+   Artwork: hawaii/pattern.svg (tile) and hawaii/scene.svg (end-of-list panel). */
+
+:root[data-theme='hawaii'] {
+  --candy: #e33b43;
+  --candy-strong: #b3202e;
+  --candy-soft: #fde0e2;
+  --candy-badge: #b3202e;
+  --primary: #0f7a66;
+  --primary-strong: #0b5f50;
+  --primary-text: #0b5f50;
+  --primary-soft: #d8f0ea;
+  --pink: #ffd6e6;
+  --pink-text: #9a2850;
+  --lavender: #fde9b0;
+  --lavender-text: #6b4f00;
+  --sky: #d3efe8;
+  --sky-text: #0d5b4c;
+  --peach: #ffdcd0;
+  --peach-text: #8a2a22;
+  --mint: #25a58b;
+  --mint-text: #0b5f50;
+  --mint-soft: #d8f0ea;
+  --bg: #f3fbf8;
+  --bg-2: #e4f4ee;
+  --surface: #ffffff;
+  --surface-2: #f6fcfa;
+  --border: #cfe6df;
+  --text: #12302c;
+  --muted: #4f6b66;
+  --header-bg: linear-gradient(160deg, #0f4442 0%, #0b3330 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='hawaii'] {
+    --primary: #0f7a66;
+    --primary-strong: #1ea68b;
+    --primary-text: #6ee3c9;
+    --primary-soft: #0f3a34;
+    --pink: #4a2233;
+    --pink-text: #ffd6e4;
+    --lavender: #4a3d12;
+    --lavender-text: #fde9b0;
+    --sky: #12403a;
+    --sky-text: #d3efe8;
+    --peach: #4a2a1c;
+    --peach-text: #ffd9c7;
+    --mint: #45d1b4;
+    --mint-text: #6ee3c9;
+    --mint-soft: #0f3a34;
+    --bg: #07211f;
+    --bg-2: #0a2c29;
+    --surface: #0f302d;
+    --surface-2: #143a36;
+    --border: #1f4d47;
+    --text: #e8f6f2;
+    --muted: #a6c4bd;
+    --header-bg: linear-gradient(160deg, #0a2c29 0%, #061d1b 100%);
+  }
+}
+
+:root[data-theme='hawaii'] body::before {
+  display: block;
+  content: '';
+  position: fixed;
+  inset: 0;
+  top: 0;
+  z-index: -1;
+  pointer-events: none;
+  animation: none;
+  background: url('./hawaii/pattern.svg') 0 0 / 340px 320px;
+  opacity: 0.07;
+}
+:root[data-theme='hawaii'] body {
+  background: var(--bg);
+}
+:root[data-theme='hawaii'] .top-bar {
+  background: #0f4442;
+  border-bottom: 0;
+}
+:root[data-theme='hawaii'] .top-bar-name {
+  color: #f7f1de;
+}
+:root[data-theme='hawaii'] .top-bar-btn {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+:root[data-theme='hawaii'] .app-header {
+  background:
+    linear-gradient(180deg, rgba(10, 45, 42, 0.76) 0%, rgba(10, 45, 42, 0.62) 100%),
+    url('./hawaii/pattern.svg') 0 0 / 340px 320px,
+    #0c3835;
+}
+:root[data-theme='hawaii'] .app-header::after {
+  background: repeating-linear-gradient(-45deg, #e33b43 0 8px, #fff 8px 16px);
+  opacity: 1;
+}
+:root[data-theme='hawaii'] .header-text::before {
+  content: 'Mele Kalikimaka';
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #f6c84e;
+  margin-bottom: 2px;
+}
+:root[data-theme='hawaii'] .person-card::before {
+  background: repeating-linear-gradient(-45deg, #e33b43 0 10px, #fff 10px 20px);
+}
+:root[data-theme='hawaii'] .fab {
+  background: radial-gradient(circle at 32% 30%, #f0545c, #c4262f);
+}
+:root[data-theme='hawaii'] .groups::after {
+  content: '';
+  display: block;
+  height: 170px;
+  margin: 16px -16px 0;
+  border-radius: 22px 22px 0 0;
+  background: url('./hawaii/scene.svg') no-repeat center bottom / 390px 170px;
+}
+:root[data-theme='hawaii'] .landing-hero {
+  background:
+    linear-gradient(180deg, rgba(10, 45, 42, 0.76) 0%, rgba(10, 45, 42, 0.62) 100%),
+    url('./hawaii/pattern.svg') 0 0 / 340px 320px,
+    #0c3835;
+}
+:root[data-theme='hawaii'] .landing-name {
+  color: #0f4442;
+}
+:root[data-theme='hawaii'] .candy-rule {
+  background: repeating-linear-gradient(-45deg, #e33b43 0 10px, #fff 10px 20px);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='hawaii'] .landing-name {
+    color: #f7f1de;
+  }
+}
