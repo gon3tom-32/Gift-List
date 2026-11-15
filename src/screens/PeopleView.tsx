@@ -8,6 +8,7 @@ import { isOpen } from '../lib/status';
 import type { GroupIcon, Person } from '../lib/types';
 import { formatCents, type Totals } from '../lib/money';
 import { useCollapsedGroups } from '../lib/collapsed';
+import { moveItem } from '../lib/groupOrder';
 import { Icon } from '../components/Icon';
 import { PersonCard } from '../components/Cards';
 import { BudgetBar } from '../components/BudgetBar';
@@ -20,6 +21,7 @@ const heads = (list: Person[]) => list.reduce((n, p) => n + p.headcount, 0);
 export function PeopleView({ tools }: { tools: HomeTools }) {
   const { data, toast } = useApp();
   const [busy, setBusy] = useState(false);
+  const [arranging, setArranging] = useState(false);
 
   const groups = useMemo(
     () => [...data.groups].sort((a, b) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at)),
@@ -56,6 +58,15 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
     }
   }
 
+  async function move(id: string, direction: -1 | 1) {
+    const next = moveItem(groups.map((g) => g.id), id, direction);
+    try {
+      await data.reorderGroups(next);
+    } catch (err) {
+      toast(`Could not save the new order. ${errorText(err)}`);
+    }
+  }
+
   if (groups.length === 0) {
     return (
       <section className="empty-state">
@@ -80,10 +91,65 @@ export function PeopleView({ tools }: { tools: HomeTools }) {
 
   const unusedStarters = STARTERS.filter((s) => !groups.some((g) => g.name.toLowerCase() === s.name.toLowerCase()));
 
+  if (arranging) {
+    return (
+      <div className="groups">
+        <div className="arrange-head">
+          <div>
+            <h2 className="h3">Arrange groups</h2>
+            <p className="small muted">Use the arrows to move a group. It saves as you go.</p>
+          </div>
+          <button type="button" className="btn primary small" onClick={() => setArranging(false)}>
+            Done
+          </button>
+        </div>
+        <ol className="arrange-list">
+          {groups.map((group, i) => {
+            const people = data.people.filter((p) => p.group_id === group.id);
+            return (
+              <li key={group.id} className="arrange-row">
+                <span className={`group-icon icon-${group.icon}`} data-tone={String(i % 5)} aria-hidden="true">
+                  <Icon name={group.icon} />
+                </span>
+                <div className="arrange-title">
+                  <strong>{group.name}</strong>
+                  <span className="small muted">
+                    {heads(people)} {heads(people) === 1 ? 'person' : 'people'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="icon-btn arrange-btn up"
+                  onClick={() => void move(group.id, -1)}
+                  disabled={i === 0}
+                  aria-label={`Move ${group.name} up`}
+                >
+                  <Icon name="chevron" size={20} />
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn arrange-btn down"
+                  onClick={() => void move(group.id, 1)}
+                  disabled={i === groups.length - 1}
+                  aria-label={`Move ${group.name} down`}
+                >
+                  <Icon name="chevron" size={20} />
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    );
+  }
+
   return (
     <div className="groups">
       {groups.length > 1 && (
         <div className="group-fold-all">
+          <button type="button" className="btn link small" onClick={() => setArranging(true)}>
+            Reorder
+          </button>
           <button type="button" className="btn link small" onClick={folded.collapseAll} disabled={folded.count === groups.length}>
             Collapse all
           </button>

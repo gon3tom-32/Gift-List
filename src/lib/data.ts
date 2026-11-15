@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import { centsToDb, type Cents } from './money';
+import { sortOrdersFor } from './groupOrder';
 import {
   fromDb,
   type Family,
@@ -120,6 +121,8 @@ function check<T>(res: { data: T; error: { message: string } | null }): NonNulla
 
 export function useHouseholdData(householdId: string) {
   const [state, setState] = useState<HouseholdState>(empty);
+  const stateRef = useRef(state);
+  stateRef.current = state;
   const alive = useRef(true);
 
   const load = useCallback(async () => {
@@ -283,6 +286,25 @@ export function useHouseholdData(householdId: string) {
       async updateGroup(id: string, patch: Partial<GroupInput>) {
         const row = fromDb.group(check(await supabase.from('gift_groups').update(toDb(patch)).eq('id', id).select().single()));
         setState((s) => ({ ...s, groups: upsert(s.groups, row) }));
+      },
+
+      /** Saves a new order for the groups (the ids, top first). Goes back to the old order if a save fails. */
+      async reorderGroups(ids: string[]) {
+        const before = stateRef.current.groups;
+        const changes = sortOrdersFor(ids, before);
+        if (changes.length === 0) return;
+        const next = new Map(changes.map((c) => [c.id, c.sort_order]));
+        setState((s) => ({ ...s, groups: s.groups.map((g) => (next.has(g.id) ? { ...g, sort_order: next.get(g.id)! } : g)) }));
+        const results = await Promise.all(
+          changes.map((c) => supabase.from('gift_groups').update({ sort_order: c.sort_order }).eq('id', c.id)),
+        );
+        const failed = results.find((r) => r.error);
+        if (failed?.error) {
+          // Put back only the numbers we changed, so nothing else that arrived meanwhile is lost.
+          const old = new Map(before.map((g) => [g.id, g.sort_order]));
+          setState((s) => ({ ...s, groups: s.groups.map((g) => (next.has(g.id) ? { ...g, sort_order: old.get(g.id) ?? g.sort_order } : g)) }));
+          throw new Error(failed.error.message);
+        }
       },
 
       async deleteGroup(id: string) {

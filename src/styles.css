@@ -984,6 +984,48 @@ details.more[open] summary {
 .group-body[hidden] {
   display: none;
 }
+.arrange-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.arrange-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 72px; /* room so the round + button doesn't cover the last row */
+  display: grid;
+  gap: 8px;
+}
+.arrange-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.arrange-title {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+}
+.arrange-btn {
+  width: 44px;
+  height: 44px;
+  flex: none;
+}
+.arrange-btn.up svg {
+  transform: rotate(-90deg);
+}
+.arrange-btn.down svg {
+  transform: rotate(90deg);
+}
+.arrange-btn:disabled {
+  opacity: 0.35;
+}
 .group-fold-all {
   display: flex;
   justify-content: flex-end;
