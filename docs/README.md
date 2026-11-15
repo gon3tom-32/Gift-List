@@ -9,6 +9,7 @@ One short file per feature: what it does, how it works, where the code lives, th
 | Groups of people with a headcount (Teachers x12) | [group-recipients.md](group-recipients.md) |
 | Minimize groups on the People screen | [collapse-groups.md](collapse-groups.md) |
 | Phone widget (Scriptable): countdown, groups that still need gifts | [phone-widget.md](phone-widget.md) |
+| Arrange the order of the groups | [arrange-groups.md](arrange-groups.md) |
 | Landing page for signed-out visitors (real screens, made-up family) | [landing-page.md](landing-page.md) |
 | Sign-up for anyone, separate lists, per-list limits, sign-in email setup | [sign-up-and-limits.md](sign-up-and-limits.md) |
 
