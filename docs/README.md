@@ -24,3 +24,4 @@ These exist in the app but do not have their own page yet:
 - Installing to the Home Screen (manifest, icons, cache-busting)
 - Families and groups
 - Partner setup and household security (row-level security tests)
+- [themes.md](themes.md): Classic and Hawaiian Christmas looks, switched in Settings.
