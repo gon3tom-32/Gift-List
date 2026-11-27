@@ -5,8 +5,10 @@ import { fetchLinkPreview, fetchPreviewImage, looksLikeUrl, storeFromUrl, type L
 import { uploadPhoto } from '../lib/photos';
 import { eachText, formatCents, splitCents, toCents, type Cents } from '../lib/money';
 import type { Gift } from '../lib/types';
+import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { MoneyField, TextField } from '../components/Fields';
+import { PhotoPicker } from '../components/PhotoPicker';
 import { NEW_PERSON, PersonPicker } from './PersonPicker';
 import { AlsoFor } from './AlsoFor';
 
@@ -43,6 +45,18 @@ export function QuickAddSheet({
   const [preview, setPreview] = useState<LinkPreview | null>(null);
   const [looking, setLooking] = useState(false);
   const [saving, setSaving] = useState(false);
+  // A picture taken or chosen now, shown here and uploaded once the gift is saved.
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!photo) {
+      setPhotoUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(photo);
+    setPhotoUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [photo]);
   // A shared name hint counts as typed only when there's no link to look up.
   const nameTouched = useRef(Boolean(initialName && !initialLink));
   const nameRef = useRef<HTMLInputElement>(null);
@@ -102,8 +116,13 @@ export function QuickAddSheet({
       if (extras.length > 0) await data.setGiftRecipients(gift.id, extras);
       onAdded(gift);
 
-      // Bring the link's picture in after saving, in the background.
-      if (preview?.image) {
+      // Bring the picture in after saving, in the background. Your own picture wins over the link's.
+      if (photo) {
+        void (async () => {
+          const path = await uploadPhoto(householdId, 'gifts', gift.id, photo);
+          await data.updateGift(gift.id, { photo_path: path });
+        })().catch(() => toast("The idea is saved, but the picture didn't upload. Add it from the gift."));
+      } else if (preview?.image) {
         void (async () => {
           const blob = await fetchPreviewImage(preview.image!);
           if (!blob) return;
@@ -194,20 +213,29 @@ export function QuickAddSheet({
           </div>
         )}
 
-        <details className="more" open={link || estimate !== null ? true : undefined}>
-          <summary>Price and link (optional)</summary>
+        <MoneyField
+          label="Price (optional)"
+          value={estimate}
+          onChange={setEstimate}
+          onValidChange={setEstimateOk}
+          hint={
+            estimate !== null && estimate === toCents(preview?.price ?? null)
+              ? `Price from ${preview?.site ?? 'the shop'}. Change it if you like.`
+              : undefined
+          }
+        />
+
+        <PhotoPicker
+          preview={photoUrl ? <img src={photoUrl} alt="Your picture of the gift" /> : <Icon name="camera" size={28} />}
+          hasPhoto={Boolean(photo)}
+          onPick={setPhoto}
+          onRemove={() => setPhoto(null)}
+          prompt="Take or add a picture"
+        />
+
+        <details className="more" open={link ? true : undefined}>
+          <summary>Link (optional)</summary>
           <div className="stack">
-            <MoneyField
-              label="Estimate"
-              value={estimate}
-              onChange={setEstimate}
-              onValidChange={setEstimateOk}
-              hint={
-                estimate !== null && estimate === toCents(preview?.price ?? null)
-                  ? `Price from ${preview?.site ?? 'the shop'}. Change it if you like.`
-                  : undefined
-              }
-            />
             <TextField
               label="Link"
               type="url"

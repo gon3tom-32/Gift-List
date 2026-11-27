@@ -2225,3 +2225,12 @@ dialog.sheet::backdrop {
   background: linear-gradient(rgba(10, 45, 42, 0.5), rgba(10, 45, 42, 0.4)), url('./themes/hawaii/pattern.svg') 0 0 / 170px 160px, #0c3835;
   border-image: repeating-linear-gradient(-45deg, #e33b43 0 6px, #fff 6px 12px) 8;
 }
+.photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.photo-preview:not(:has(img)) {
+  background: var(--bg-2);
+  color: var(--muted);
+}
