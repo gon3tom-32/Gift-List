@@ -2234,3 +2234,36 @@ dialog.sheet::backdrop {
   background: var(--bg-2);
   color: var(--muted);
 }
+
+/* Receipts */
+.receipt-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 14px;
+}
+.receipt-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.receipt-thumb {
+  width: 84px;
+  height: 112px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  display: block;
+}
+.receipt-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.receipt-body {
+  min-width: 0;
+  flex: 1;
+}

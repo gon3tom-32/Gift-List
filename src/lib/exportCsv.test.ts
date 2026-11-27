@@ -45,7 +45,17 @@ const gift = (over: Partial<Gift>): Gift => ({
 });
 
 const base: ExportData = {
-  groups: [{ id: 'g1', household_id: 'h', name: 'Our family', icon: 'gift', budget: null, sort_order: 0, created_at: '' }],
+  groups: [
+    {
+      id: 'g1',
+      household_id: 'h',
+      name: 'Our family',
+      icon: 'gift',
+      budget: null,
+      sort_order: 0,
+      created_at: '',
+    },
+  ],
   families: [],
   people: [person('p1', 'Mom'), person('p2', 'Dad'), person('p3', 'Emma')],
   gifts: [],
@@ -77,7 +87,7 @@ describe('buildCsv', () => {
     expect(csv.startsWith('﻿')).toBe(true);
     const rows = lines(csv);
     expect(rows[0]).toBe(
-      'Person,Group,Family,Gift,Store,Link,Status,Estimate,Paid,People,Buyer,Shared with,Ship by,Payment method,Added by,Added on',
+      'Person,Group,Family,Gift,Store,Link,Status,Estimate,Paid,People,Buyer,Shared with,Ship by,Payment method,Added by,Added on,Receipts',
     );
     expect(rows).toHaveLength(4); // header + Dad, Emma, Mom
     expect(rows[1].startsWith('Dad,Our family,,')).toBe(true);
@@ -86,10 +96,18 @@ describe('buildCsv', () => {
   it('writes exact money, status, buyer and who added it', () => {
     const csv = buildCsv({
       ...base,
-      gifts: [gift({ estimate: 8950, paid: 8450, status: 'wrapped', store: 'Nordstrom, Inc.', assigned_to: 'u2' })],
+      gifts: [
+        gift({
+          estimate: 8950,
+          paid: 8450,
+          status: 'wrapped',
+          store: 'Nordstrom, Inc.',
+          assigned_to: 'u2',
+        }),
+      ],
     });
     const row = lines(csv).find((r) => r.startsWith('Mom'))!;
-    expect(row).toBe('Mom,Our family,,Scarf,"Nordstrom, Inc.",,Wrapped,89.50,84.50,1,Jordan,,,,Alex,2026-10-05');
+    expect(row).toBe('Mom,Our family,,Scarf,"Nordstrom, Inc.",,Wrapped,89.50,84.50,1,Jordan,,,,Alex,2026-10-05,0');
   });
 
   it('shows shared gifts, "Both of us" and gifts whose creator is gone', () => {
@@ -110,14 +128,42 @@ describe('buildCsv', () => {
     const csv = buildCsv({
       ...base,
       people: [{ ...person('p1', 'Teachers'), headcount: 12 }, person('p2', 'Dad')],
-      gifts: [gift({ id: 'k9', person_id: 'p1', name: 'Succulent', estimate: 8775, status: 'ordered' })],
+      gifts: [
+        gift({
+          id: 'k9',
+          person_id: 'p1',
+          name: 'Succulent',
+          estimate: 8775,
+          status: 'ordered',
+        }),
+      ],
     });
     expect(lines(csv).find((r) => r.startsWith('Teachers'))).toBe(
-      'Teachers,Our family,,Succulent,,,Ordered,87.75,,12,,,,,Alex,2026-10-05',
+      'Teachers,Our family,,Succulent,,,Ordered,87.75,,12,,,,,Alex,2026-10-05,0',
     );
     // a group with no gifts yet still shows how many people it is
-    const empty = buildCsv({ ...base, people: [{ ...person('p1', 'Aides'), headcount: 6 }] });
+    const empty = buildCsv({
+      ...base,
+      people: [{ ...person('p1', 'Aides'), headcount: 6 }],
+    });
     expect(lines(empty)[1].split(',')[9]).toBe('6');
+  });
+
+  it('counts the receipts on each gift', () => {
+    const csv = buildCsv({
+      ...base,
+      gifts: [gift({ id: 'k3', name: 'Scarf' })],
+      giftReceipts: [
+        { gift_id: 'k3', receipt_id: 'r1', household_id: 'h' },
+        { gift_id: 'k3', receipt_id: 'r2', household_id: 'h' },
+      ],
+    });
+    expect(lines(csv)[0].endsWith(',Receipts')).toBe(true);
+    expect(
+      lines(csv)
+        .find((r) => r.startsWith('Mom'))!
+        .endsWith(',2'),
+    ).toBe(true);
   });
 
   it('keeps a gift named like a formula from running', () => {
@@ -131,12 +177,32 @@ describe('buildCsv order', () => {
     const csv = buildCsv({
       ...base,
       groups: [
-        { id: 'g1', household_id: 'h', name: 'Pets', icon: 'paw', budget: null, sort_order: 1, created_at: '' },
-        { id: 'g2', household_id: 'h', name: 'Family', icon: 'gift', budget: null, sort_order: 0, created_at: '' },
+        {
+          id: 'g1',
+          household_id: 'h',
+          name: 'Pets',
+          icon: 'paw',
+          budget: null,
+          sort_order: 1,
+          created_at: '',
+        },
+        {
+          id: 'g2',
+          household_id: 'h',
+          name: 'Family',
+          icon: 'gift',
+          budget: null,
+          sort_order: 0,
+          created_at: '',
+        },
       ],
       people: [person('p1', 'Biscuit', 'g1'), person('p2', 'Zed', 'g2'), person('p3', 'Amy', 'g2')],
     });
-    expect(lines(csv).slice(1).map((r) => r.split(',')[0])).toEqual(['Amy', 'Zed', 'Biscuit']);
+    expect(
+      lines(csv)
+        .slice(1)
+        .map((r) => r.split(',')[0]),
+    ).toEqual(['Amy', 'Zed', 'Biscuit']);
   });
 });
 

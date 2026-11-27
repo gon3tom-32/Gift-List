@@ -45,6 +45,12 @@ export function QuickAddSheet({
   const [preview, setPreview] = useState<LinkPreview | null>(null);
   const [looking, setLooking] = useState(false);
   const [saving, setSaving] = useState(false);
+  // In the store: mark it bought, enter what was paid (tax included) and keep the receipt.
+  const [bought, setBought] = useState(false);
+  const [paid, setPaid] = useState<Cents | null>(null);
+  const [paidOk, setPaidOk] = useState(true);
+  const [receipt, setReceipt] = useState<File | null>(null);
+  const receiptInput = useRef<HTMLInputElement>(null);
   // A picture taken or chosen now, shown here and uploaded once the gift is saved.
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -92,7 +98,7 @@ export function QuickAddSheet({
   async function save(e: FormEvent) {
     e.preventDefault();
     const cleanName = name.trim();
-    if (!cleanName || !estimateOk) return;
+    if (!cleanName || !estimateOk || (bought && !paidOk)) return;
     setSaving(true);
     try {
       let pid = personId;
@@ -100,7 +106,14 @@ export function QuickAddSheet({
         const who = newPerson.trim();
         if (!who) throw new Error("Add the person's name.");
         let gid = groupId;
-        if (!gid) gid = (await data.addGroup({ name: 'Our family', icon: 'gift', budget: null })).id;
+        if (!gid)
+          gid = (
+            await data.addGroup({
+              name: 'Our family',
+              icon: 'gift',
+              budget: null,
+            })
+          ).id;
         pid = (await data.addPerson({ name: who, group_id: gid })).id;
       }
       lastPersonId = pid;
@@ -111,10 +124,18 @@ export function QuickAddSheet({
         link: cleanLink,
         store: preview?.site ?? (cleanLink ? storeFromUrl(cleanLink) : null),
         estimate,
+        ...(bought ? { status: 'ordered' as const, paid } : {}),
       });
       const extras = also.filter((id) => id !== pid);
       if (extras.length > 0) await data.setGiftRecipients(gift.id, extras);
       onAdded(gift);
+
+      if (bought && receipt) {
+        void (async () => {
+          const path = await uploadPhoto(householdId, 'receipts', crypto.randomUUID(), receipt);
+          await data.addReceipt({ photo_path: path, store: preview?.site ?? null }, [gift.id]);
+        })().catch(() => toast("The idea is saved, but the receipt didn't upload. Add it from the gift."));
+      }
 
       // Bring the picture in after saving, in the background. Your own picture wins over the link's.
       if (photo) {
@@ -233,6 +254,48 @@ export function QuickAddSheet({
           prompt="Take or add a picture"
         />
 
+        <label className="toggle">
+          <input type="checkbox" checked={bought} onChange={(e) => setBought(e.target.checked)} />
+          <span>I bought it</span>
+        </label>
+        {bought && (
+          <div className="stack">
+            <MoneyField
+              label="Paid (tax included)"
+              value={paid}
+              onChange={setPaid}
+              onValidChange={setPaidOk}
+              hint="Saved as Ordered. This is what counts toward your budget."
+            />
+            <div className="photo-actions">
+              <input
+                ref={receiptInput}
+                type="file"
+                accept="image/*"
+                className="visually-hidden"
+                tabIndex={-1}
+                aria-label="Receipt photo"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) setReceipt(f);
+                  e.target.value = '';
+                }}
+              />
+              <button type="button" className="btn small" onClick={() => receiptInput.current?.click()}>
+                <Icon name="camera" size={18} /> {receipt ? 'Change receipt' : 'Add receipt'}
+              </button>
+              {receipt && (
+                <>
+                  <span className="small muted">Receipt added</span>
+                  <button type="button" className="btn small link" onClick={() => setReceipt(null)}>
+                    Remove
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         <details className="more" open={link ? true : undefined}>
           <summary>Link (optional)</summary>
           <div className="stack">
@@ -251,8 +314,8 @@ export function QuickAddSheet({
 
         {splitHint && <p className="split-hint small">{splitHint}</p>}
 
-        <button className="btn primary big" disabled={saving || !name.trim() || !estimateOk}>
-          {saving ? 'Saving…' : 'Save idea'}
+        <button className="btn primary big" disabled={saving || !name.trim() || !estimateOk || (bought && !paidOk)}>
+          {saving ? 'Saving…' : bought ? 'Save purchase' : 'Save idea'}
         </button>
       </form>
     </Sheet>

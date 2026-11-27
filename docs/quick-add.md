@@ -7,3 +7,5 @@
 **Code:** `src/sheets/QuickAddSheet.tsx`, `src/components/PhotoPicker.tsx`, `src/lib/photos.ts`.
 
 **Rules and pitfalls:** only the name is required; never block saving on the photo or the link lookup. The photo needs the gift id, so it must be uploaded after the insert. Photos stay in the private `gift-photos` bucket.
+
+**I bought it:** a switch that shows **Paid (tax included)** and **Add receipt**. The gift is saved as Ordered with that Paid amount, and the receipt is uploaded and attached after saving. See `receipts.md`.

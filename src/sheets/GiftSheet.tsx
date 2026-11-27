@@ -13,6 +13,7 @@ import { Field, MoneyField, TextField } from '../components/Fields';
 import { StatusStrip } from '../components/StatusStrip';
 import { GiftPhoto } from '../components/GiftPhoto';
 import { PhotoPicker } from '../components/PhotoPicker';
+import { Receipts } from '../components/Receipts';
 import { ConfirmButton } from '../components/ConfirmButton';
 import { PersonPicker } from './PersonPicker';
 import { AlsoFor } from './AlsoFor';
@@ -363,6 +364,8 @@ export function GiftSheet({
           ))}
         </datalist>
       </form>
+
+      <Receipts giftId={giftId} />
 
       {history && history.length > 0 && (
         <section className="history" aria-label="History">
