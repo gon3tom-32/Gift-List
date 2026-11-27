@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import { centsToDb, type Cents } from './money';
 import { sortOrdersFor } from './groupOrder';
+import { deletePhoto } from './photos';
 import {
   fromDb,
   type Family,
@@ -17,6 +18,8 @@ import {
   type Member,
   type Person,
   type GiftRecipient,
+  type GiftReceipt,
+  type Receipt,
 } from './types';
 import type { GiftStatus } from './status';
 
@@ -31,6 +34,8 @@ export interface HouseholdState {
   people: Person[];
   gifts: Gift[];
   recipients: GiftRecipient[];
+  receipts: Receipt[];
+  giftReceipts: GiftReceipt[];
 }
 
 const empty: HouseholdState = {
@@ -44,6 +49,8 @@ const empty: HouseholdState = {
   people: [],
   gifts: [],
   recipients: [],
+  receipts: [],
+  giftReceipts: [],
 };
 
 export interface GroupInput {
@@ -100,6 +107,14 @@ function withRecipient(list: GiftRecipient[], row: GiftRecipient): GiftRecipient
   return list.some((r) => r.gift_id === row.gift_id && r.person_id === row.person_id) ? list : [...list, row];
 }
 
+function deletePhotos(paths: string[]): Promise<unknown> {
+  return Promise.all(paths.map((p) => deletePhoto(p)));
+}
+
+function withLink(list: GiftReceipt[], row: GiftReceipt): GiftReceipt[] {
+  return list.some((r) => r.gift_id === row.gift_id && r.receipt_id === row.receipt_id) ? list : [...list, row];
+}
+
 function remove<T extends { id: string }>(list: T[], id: string): T[] {
   return list.some((x) => x.id === id) ? list.filter((x) => x.id !== id) : list;
 }
@@ -127,7 +142,7 @@ export function useHouseholdData(householdId: string) {
 
   const load = useCallback(async () => {
     try {
-      const [h, m, inv, g, f, p, gifts, rec] = await Promise.all([
+      const [h, m, inv, g, f, p, gifts, rec, rcp, grc] = await Promise.all([
         supabase.from('households').select('id, name, budget, photo_path').eq('id', householdId).single(),
         supabase
           .from('household_members')
@@ -144,6 +159,8 @@ export function useHouseholdData(householdId: string) {
         supabase.from('people').select('*').eq('household_id', householdId),
         supabase.from('gifts').select('*').eq('household_id', householdId),
         supabase.from('gift_recipients').select('*').eq('household_id', householdId),
+        supabase.from('receipts').select('*').eq('household_id', householdId),
+        supabase.from('gift_receipts').select('*').eq('household_id', householdId),
       ]);
       if (!alive.current) return;
       setState({
@@ -157,10 +174,16 @@ export function useHouseholdData(householdId: string) {
         people: check(p).map(fromDb.person),
         gifts: check(gifts).map(fromDb.gift),
         recipients: check(rec) as GiftRecipient[],
+        receipts: check(rcp).map(fromDb.receipt),
+        giftReceipts: check(grc) as GiftReceipt[],
       });
     } catch (err) {
       if (!alive.current) return;
-      setState((s) => ({ ...s, loading: false, error: err instanceof Error ? err.message : 'Could not load' }));
+      setState((s) => ({
+        ...s,
+        loading: false,
+        error: err instanceof Error ? err.message : 'Could not load',
+      }));
     }
   }, [householdId]);
 
@@ -175,21 +198,35 @@ export function useHouseholdData(householdId: string) {
       .channel(`household:${householdId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'gifts', filter }, (e) => {
         if (e.eventType === 'DELETE') return;
-        setState((s) => ({ ...s, gifts: upsert(s.gifts, fromDb.gift(e.new)) }));
+        setState((s) => ({
+          ...s,
+          gifts: upsert(s.gifts, fromDb.gift(e.new)),
+        }));
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'people', filter }, (e) => {
         if (e.eventType === 'DELETE') return;
-        setState((s) => ({ ...s, people: upsert(s.people, fromDb.person(e.new)) }));
+        setState((s) => ({
+          ...s,
+          people: upsert(s.people, fromDb.person(e.new)),
+        }));
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'gift_groups', filter }, (e) => {
         if (e.eventType === 'DELETE') return;
-        setState((s) => ({ ...s, groups: upsert(s.groups, fromDb.group(e.new)) }));
+        setState((s) => ({
+          ...s,
+          groups: upsert(s.groups, fromDb.group(e.new)),
+        }));
       })
       // Deletes can't be filtered by household; they only carry the id,
       // and removing an id we don't have is a no-op.
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'gifts' }, (e) => {
         const id = (e.old as { id?: string }).id;
-        if (id) setState((s) => ({ ...s, gifts: remove(s.gifts, id), recipients: s.recipients.filter((r) => r.gift_id !== id) }));
+        if (id)
+          setState((s) => ({
+            ...s,
+            gifts: remove(s.gifts, id),
+            recipients: s.recipients.filter((r) => r.gift_id !== id),
+          }));
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'people' }, (e) => {
         const id = (e.old as { id?: string }).id;
@@ -202,7 +239,10 @@ export function useHouseholdData(householdId: string) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'gift_recipients', filter }, (e) => {
         if (e.eventType === 'DELETE') return;
         const row = e.new as GiftRecipient;
-        setState((s) => ({ ...s, recipients: withRecipient(s.recipients, row) }));
+        setState((s) => ({
+          ...s,
+          recipients: withRecipient(s.recipients, row),
+        }));
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'gift_recipients' }, (e) => {
         const old = e.old as Partial<GiftRecipient>;
@@ -212,9 +252,44 @@ export function useHouseholdData(householdId: string) {
             recipients: s.recipients.filter((r) => !(r.gift_id === old.gift_id && r.person_id === old.person_id)),
           }));
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'receipts', filter }, (e) => {
+        if (e.eventType === 'DELETE') return;
+        setState((s) => ({
+          ...s,
+          receipts: upsert(s.receipts, fromDb.receipt(e.new)),
+        }));
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'receipts' }, (e) => {
+        const id = (e.old as { id?: string }).id;
+        if (id)
+          setState((s) => ({
+            ...s,
+            receipts: remove(s.receipts, id),
+            giftReceipts: s.giftReceipts.filter((r) => r.receipt_id !== id),
+          }));
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'gift_receipts', filter }, (e) => {
+        if (e.eventType === 'DELETE') return;
+        const row = e.new as GiftReceipt;
+        setState((s) => ({
+          ...s,
+          giftReceipts: withLink(s.giftReceipts, row),
+        }));
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'gift_receipts' }, (e) => {
+        const old = e.old as Partial<GiftReceipt>;
+        if (old.gift_id && old.receipt_id)
+          setState((s) => ({
+            ...s,
+            giftReceipts: s.giftReceipts.filter((r) => !(r.gift_id === old.gift_id && r.receipt_id === old.receipt_id)),
+          }));
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'families', filter }, (e) => {
         if (e.eventType === 'DELETE') return;
-        setState((s) => ({ ...s, families: upsert(s.families, fromDb.family(e.new)) }));
+        setState((s) => ({
+          ...s,
+          families: upsert(s.families, fromDb.family(e.new)),
+        }));
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'families' }, (e) => {
         const id = (e.old as { id?: string }).id;
@@ -237,7 +312,12 @@ export function useHouseholdData(householdId: string) {
       })
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'households', filter: `id=eq.${householdId}` },
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'households',
+          filter: `id=eq.${householdId}`,
+        },
         (e) => setState((s) => ({ ...s, household: fromDb.household(e.new) })),
       )
       .subscribe((status) => {
@@ -258,13 +338,34 @@ export function useHouseholdData(householdId: string) {
     };
   }, [householdId, load]);
 
-  const actions = useMemo(
-    () => ({
+  const actions = useMemo(() => {
+    async function link(receiptId: string, giftIds: string[]) {
+      const rows = giftIds.map((gift_id) => ({
+        gift_id,
+        receipt_id: receiptId,
+        household_id: householdId,
+      }));
+      const res = await supabase.from('gift_receipts').upsert(rows, {
+        onConflict: 'gift_id,receipt_id',
+        ignoreDuplicates: true,
+      });
+      if (res.error) throw new Error(res.error.message);
+      setState((s) => ({
+        ...s,
+        giftReceipts: rows.reduce(withLink, s.giftReceipts),
+      }));
+    }
+    return {
       reload: load,
 
       async updateHousehold(patch: { name?: string; budget?: Cents; photo_path?: string | null }) {
         const row = check(
-          await supabase.from('households').update(toDb(patch)).eq('id', householdId).select('id, name, budget, photo_path').single(),
+          await supabase
+            .from('households')
+            .update(toDb(patch))
+            .eq('id', householdId)
+            .select('id, name, budget, photo_path')
+            .single(),
         );
         setState((s) => ({ ...s, household: fromDb.household(row) }));
       },
@@ -274,7 +375,11 @@ export function useHouseholdData(householdId: string) {
           check(
             await supabase
               .from('gift_groups')
-              .insert({ ...toDb(input), household_id: householdId, sort_order: Date.now() % 2147483647 })
+              .insert({
+                ...toDb(input),
+                household_id: householdId,
+                sort_order: Date.now() % 2147483647,
+              })
               .select()
               .single(),
           ),
@@ -284,7 +389,9 @@ export function useHouseholdData(householdId: string) {
       },
 
       async updateGroup(id: string, patch: Partial<GroupInput>) {
-        const row = fromDb.group(check(await supabase.from('gift_groups').update(toDb(patch)).eq('id', id).select().single()));
+        const row = fromDb.group(
+          check(await supabase.from('gift_groups').update(toDb(patch)).eq('id', id).select().single()),
+        );
         setState((s) => ({ ...s, groups: upsert(s.groups, row) }));
       },
 
@@ -294,7 +401,10 @@ export function useHouseholdData(householdId: string) {
         const changes = sortOrdersFor(ids, before);
         if (changes.length === 0) return;
         const next = new Map(changes.map((c) => [c.id, c.sort_order]));
-        setState((s) => ({ ...s, groups: s.groups.map((g) => (next.has(g.id) ? { ...g, sort_order: next.get(g.id)! } : g)) }));
+        setState((s) => ({
+          ...s,
+          groups: s.groups.map((g) => (next.has(g.id) ? { ...g, sort_order: next.get(g.id)! } : g)),
+        }));
         const results = await Promise.all(
           changes.map((c) => supabase.from('gift_groups').update({ sort_order: c.sort_order }).eq('id', c.id)),
         );
@@ -302,7 +412,10 @@ export function useHouseholdData(householdId: string) {
         if (failed?.error) {
           // Put back only the numbers we changed, so nothing else that arrived meanwhile is lost.
           const old = new Map(before.map((g) => [g.id, g.sort_order]));
-          setState((s) => ({ ...s, groups: s.groups.map((g) => (next.has(g.id) ? { ...g, sort_order: old.get(g.id) ?? g.sort_order } : g)) }));
+          setState((s) => ({
+            ...s,
+            groups: s.groups.map((g) => (next.has(g.id) ? { ...g, sort_order: old.get(g.id) ?? g.sort_order } : g)),
+          }));
           throw new Error(failed.error.message);
         }
       },
@@ -325,7 +438,13 @@ export function useHouseholdData(householdId: string) {
 
       async addPerson(input: PersonInput): Promise<Person> {
         const row = fromDb.person(
-          check(await supabase.from('people').insert({ ...toDb(input), household_id: householdId }).select().single()),
+          check(
+            await supabase
+              .from('people')
+              .insert({ ...toDb(input), household_id: householdId })
+              .select()
+              .single(),
+          ),
         );
         setState((s) => ({ ...s, people: upsert(s.people, row) }));
         return row;
@@ -334,7 +453,9 @@ export function useHouseholdData(householdId: string) {
       async updatePerson(id: string, patch: Partial<PersonInput>) {
         // A family belongs to one group, so moving groups leaves the family.
         if (patch.group_id !== undefined && patch.family_id === undefined) patch = { ...patch, family_id: null };
-        const row = fromDb.person(check(await supabase.from('people').update(toDb(patch)).eq('id', id).select().single()));
+        const row = fromDb.person(
+          check(await supabase.from('people').update(toDb(patch)).eq('id', id).select().single()),
+        );
         setState((s) => ({ ...s, people: upsert(s.people, row) }));
       },
 
@@ -343,7 +464,12 @@ export function useHouseholdData(householdId: string) {
           check(
             await supabase
               .from('families')
-              .insert({ name: input.name, group_id: input.group_id, household_id: householdId, sort_order: Date.now() % 2147483647 })
+              .insert({
+                name: input.name,
+                group_id: input.group_id,
+                household_id: householdId,
+                sort_order: Date.now() % 2147483647,
+              })
               .select()
               .single(),
           ),
@@ -374,9 +500,9 @@ export function useHouseholdData(householdId: string) {
       /** Replaces the EXTRA people a gift is shared with (the main person is not in this list). */
       async setGiftRecipients(giftId: string, personIds: string[]) {
         const wanted = [...new Set(personIds)];
-        const current = check(
-          await supabase.from('gift_recipients').select('person_id').eq('gift_id', giftId),
-        ) as { person_id: string }[];
+        const current = check(await supabase.from('gift_recipients').select('person_id').eq('gift_id', giftId)) as {
+          person_id: string;
+        }[];
         const have = new Set(current.map((r) => r.person_id));
         const drop = [...have].filter((id) => !wanted.includes(id));
         const add = wanted.filter((id) => !have.has(id));
@@ -385,16 +511,24 @@ export function useHouseholdData(householdId: string) {
           if (del.error) throw new Error(del.error.message);
         }
         if (add.length > 0) {
-          const ins = await supabase
-            .from('gift_recipients')
-            .insert(add.map((person_id) => ({ gift_id: giftId, person_id, household_id: householdId })));
+          const ins = await supabase.from('gift_recipients').insert(
+            add.map((person_id) => ({
+              gift_id: giftId,
+              person_id,
+              household_id: householdId,
+            })),
+          );
           if (ins.error) throw new Error(ins.error.message);
         }
         setState((s) => ({
           ...s,
           recipients: [
             ...s.recipients.filter((r) => r.gift_id !== giftId),
-            ...wanted.map((person_id) => ({ gift_id: giftId, person_id, household_id: householdId })),
+            ...wanted.map((person_id) => ({
+              gift_id: giftId,
+              person_id,
+              household_id: householdId,
+            })),
           ],
         }));
       },
@@ -405,7 +539,11 @@ export function useHouseholdData(householdId: string) {
           check(
             await supabase
               .from('gifts')
-              .insert({ ...toDb(input), household_id: householdId, created_by: auth.user?.id })
+              .insert({
+                ...toDb(input),
+                household_id: householdId,
+                created_by: auth.user?.id,
+              })
               .select()
               .single(),
           ),
@@ -421,9 +559,80 @@ export function useHouseholdData(householdId: string) {
       },
 
       async deleteGift(id: string) {
+        // Receipts that cover only this gift go with it (the database drops the rows).
+        const cur = stateRef.current;
+        const mine = new Set(cur.giftReceipts.filter((r) => r.gift_id === id).map((r) => r.receipt_id));
+        const orphans = cur.receipts.filter(
+          (r) => mine.has(r.id) && !cur.giftReceipts.some((x) => x.receipt_id === r.id && x.gift_id !== id),
+        );
         const del = await supabase.from('gifts').delete().eq('id', id);
         if (del.error) throw new Error(del.error.message);
-        setState((s) => ({ ...s, gifts: remove(s.gifts, id), recipients: s.recipients.filter((r) => r.gift_id !== id) }));
+        const gone = new Set(orphans.map((r) => r.id));
+        setState((s) => ({
+          ...s,
+          gifts: remove(s.gifts, id),
+          recipients: s.recipients.filter((r) => r.gift_id !== id),
+          giftReceipts: s.giftReceipts.filter((r) => r.gift_id !== id),
+          receipts: s.receipts.filter((r) => !gone.has(r.id)),
+        }));
+        // The database removed those receipts' rows; delete their files too.
+        void deletePhotos(orphans.map((r) => r.photo_path));
+      },
+
+      /** Adds a receipt (photo already uploaded) and attaches it to the given gifts. */
+      async addReceipt(
+        input: {
+          photo_path: string;
+          total?: Cents | null;
+          store?: string | null;
+        },
+        giftIds: string[],
+      ): Promise<Receipt> {
+        const { data: auth } = await supabase.auth.getUser();
+        const row = fromDb.receipt(
+          check(
+            await supabase
+              .from('receipts')
+              .insert({
+                household_id: householdId,
+                photo_path: input.photo_path,
+                total: centsToDb(input.total ?? null),
+                store: input.store ?? null,
+                created_by: auth.user?.id,
+              })
+              .select()
+              .single(),
+          ),
+        );
+        setState((s) => ({ ...s, receipts: upsert(s.receipts, row) }));
+        if (giftIds.length > 0) await link(row.id, giftIds);
+        return row;
+      },
+
+      async updateReceipt(id: string, patch: { total?: Cents | null; store?: string | null }): Promise<Receipt> {
+        const row = fromDb.receipt(
+          check(await supabase.from('receipts').update(toDb(patch)).eq('id', id).select().single()),
+        );
+        setState((s) => ({ ...s, receipts: upsert(s.receipts, row) }));
+        return row;
+      },
+
+      attachReceipt: link,
+
+      /** Takes a receipt off one gift. If no gift uses it any more, it and its file are removed. */
+      async detachReceipt(receiptId: string, giftId: string) {
+        const res = await supabase.from('gift_receipts').delete().eq('gift_id', giftId).eq('receipt_id', receiptId);
+        if (res.error) throw new Error(res.error.message);
+        const cur = stateRef.current;
+        const left = cur.giftReceipts.filter((r) => !(r.gift_id === giftId && r.receipt_id === receiptId));
+        const orphan = !left.some((r) => r.receipt_id === receiptId);
+        const photo = cur.receipts.find((r) => r.id === receiptId)?.photo_path;
+        setState((s) => ({
+          ...s,
+          giftReceipts: left,
+          receipts: orphan ? s.receipts.filter((r) => r.id !== receiptId) : s.receipts,
+        }));
+        if (orphan && photo) void deletePhotos([photo]);
       },
 
       async giftHistory(giftId: string): Promise<GiftEvent[]> {
@@ -438,7 +647,10 @@ export function useHouseholdData(householdId: string) {
       },
 
       async invite(email: string) {
-        const res = await supabase.rpc('invite_partner', { hid: householdId, invite_email: email });
+        const res = await supabase.rpc('invite_partner', {
+          hid: householdId,
+          invite_email: email,
+        });
         if (res.error) throw new Error(res.error.message);
         await load();
       },
@@ -457,7 +669,11 @@ export function useHouseholdData(householdId: string) {
               apikey: import.meta.env.VITE_SUPABASE_ANON_KEY as string,
               'content-type': 'application/json',
             },
-            body: JSON.stringify({ household_id: householdId, email, password }),
+            body: JSON.stringify({
+              household_id: householdId,
+              email,
+              password,
+            }),
           });
         } catch {
           throw new Error('Could not reach the server. Check your connection and try again.');
@@ -470,7 +686,10 @@ export function useHouseholdData(householdId: string) {
       async cancelInvite(id: string) {
         const del = await supabase.from('household_invites').delete().eq('id', id);
         if (del.error) throw new Error(del.error.message);
-        setState((s) => ({ ...s, invites: s.invites.filter((i) => i.id !== id) }));
+        setState((s) => ({
+          ...s,
+          invites: s.invites.filter((i) => i.id !== id),
+        }));
       },
 
       async setDisplayName(name: string) {
@@ -478,9 +697,8 @@ export function useHouseholdData(householdId: string) {
         if (res.error) throw new Error(res.error.message);
         await load();
       },
-    }),
-    [householdId, load],
-  );
+    };
+  }, [householdId, load]);
 
   return { ...state, ...actions };
 }

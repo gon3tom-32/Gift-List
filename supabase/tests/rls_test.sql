@@ -588,6 +588,49 @@ begin
   if not ok then raise exception 'FAIL: headcount 501 allowed'; end if;
 end $$;
 
+-- receipts: members manage them, one receipt can cover several gifts, never across households
+with r as (
+  insert into receipts (household_id, photo_path, total)
+  select (select v from t_ids where k = 'evil_home'), (select v from t_ids where k = 'evil_home')::text || '/receipts/a.webp', 31.45
+  returning id
+) insert into t_ids select 'rcpt', id from r;
+insert into gift_receipts (gift_id, receipt_id, household_id)
+select g.id, (select v from t_ids where k = 'rcpt'), (select v from t_ids where k = 'evil_home')
+from (select id from gifts where name in ('Gift 1', 'Gift 2') and household_id = (select v from t_ids where k = 'evil_home')) g;
+do $$
+declare ok boolean;
+begin
+  if (select count(*) from gift_receipts where receipt_id = (select v from t_ids where k = 'rcpt')) <> 2 then
+    raise exception 'FAIL: one receipt could not cover two gifts';
+  end if;
+  ok := false;
+  begin update receipts set total = -1 where id = (select v from t_ids where k = 'rcpt'); exception when others then ok := true; end;
+  if not ok then raise exception 'FAIL: negative receipt total allowed'; end if;
+  -- a receipt stays while any gift still uses it, and goes with the last one
+  delete from gifts where name = 'Gift 1' and household_id = (select v from t_ids where k = 'evil_home');
+  if not exists (select 1 from receipts where id = (select v from t_ids where k = 'rcpt')) then
+    raise exception 'FAIL: receipt removed while another gift still uses it';
+  end if;
+  delete from gifts where name = 'Gift 2' and household_id = (select v from t_ids where k = 'evil_home');
+  if exists (select 1 from receipts where id = (select v from t_ids where k = 'rcpt')) then
+    raise exception 'FAIL: receipt kept after its last gift was deleted';
+  end if;
+end $$;
+
+-- receipts cap: 300 allowed, the 301st is refused
+insert into receipts (household_id, photo_path)
+select (select v from t_ids where k = 'evil_home'), 'x/' || i
+from generate_series(1, 300) i;
+do $$
+declare ok boolean := false;
+begin
+  begin
+    insert into receipts (household_id, photo_path) select (select v from t_ids where k = 'evil_home'), 'x/one-too-many';
+  exception when others then ok := position('This list is full' in sqlerrm) > 0;
+  end;
+  if not ok then raise exception 'FAIL: more than 300 receipts allowed, or the message is wrong'; end if;
+end $$;
+
 -- a stranger can't change someone else's headcount
 select set_config('request.jwt.claims',
   json_build_object('sub', (select v from t_ids where k = 'alice'),
@@ -598,6 +641,20 @@ begin
   update people set headcount = 99 where name = 'Person 1' and household_id = (select v from t_ids where k = 'evil_home');
   get diagnostics n = row_count;
   if n <> 0 then raise exception 'FAIL: a stranger changed a headcount'; end if;
+end $$;
+
+-- a stranger can't read or add receipts on someone else's list
+do $$
+declare ok boolean := false;
+begin
+  if (select count(*) from receipts where household_id = (select v from t_ids where k = 'evil_home')) <> 0 then
+    raise exception 'FAIL: a stranger can read receipts';
+  end if;
+  begin
+    insert into receipts (household_id, photo_path) select (select v from t_ids where k = 'evil_home'), 'x/stolen';
+  exception when others then ok := true;
+  end;
+  if not ok then raise exception 'FAIL: a stranger added a receipt to someone else''s list'; end if;
 end $$;
 
 reset role;

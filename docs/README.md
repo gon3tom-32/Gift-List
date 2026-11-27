@@ -26,3 +26,4 @@ These exist in the app but do not have their own page yet:
 - Partner setup and household security (row-level security tests)
 - [themes.md](themes.md): Classic and Hawaiian Christmas looks, switched in Settings.
 - [quick-add.md](quick-add.md): add a gift with person, price and picture in one step.
+- [receipts.md](receipts.md): receipt photos on gifts, one receipt for several gifts, paid amounts in quick add.

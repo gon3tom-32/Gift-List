@@ -4,6 +4,7 @@
 Settings, "Your data and account", "Download my list (CSV)".
 
 - Built in the browser from the list that is already loaded (`src/lib/exportCsv.ts`); nothing new is requested from the server and nothing is stored.
+- Columns include "Receipts" (how many receipts are attached to each gift); the photos themselves are not in the file.
 - One row per gift: Person, Group, Family, Gift, Store, Link, Status, Estimate, Paid, People, Buyer, Shared with, Ship by, Payment method, Added by, Added on. People with no gifts still get a row. Groups follow the list's own order.
 - A group of people (Teachers x12): "People" is the count; Estimate and Paid are the full amounts (see `docs/group-recipients.md`).
 - Money is exact: whole cents turned into text like `89.50` (never floats).

@@ -4,7 +4,16 @@
 import { centsToDb } from './money';
 import { extrasByGift } from './recipients';
 import { STATUS_LABELS } from './status';
-import { memberName, type Family, type Gift, type GiftRecipient, type Group, type Member, type Person } from './types';
+import {
+  memberName,
+  type Family,
+  type Gift,
+  type GiftReceipt,
+  type GiftRecipient,
+  type Group,
+  type Member,
+  type Person,
+} from './types';
 
 export interface ExportData {
   groups: Group[];
@@ -12,6 +21,8 @@ export interface ExportData {
   people: Person[];
   gifts: Gift[];
   recipients: GiftRecipient[];
+  /** receipts attached to gifts; only their count is exported */
+  giftReceipts?: GiftReceipt[];
   members: Member[];
 }
 
@@ -32,6 +43,7 @@ const HEADER = [
   'Payment method',
   'Added by',
   'Added on',
+  'Receipts',
 ];
 
 /** Quotes a cell. A leading = + - @ (or tab/CR) would run as a formula in a spreadsheet, so it gets an apostrophe. */
@@ -52,13 +64,14 @@ export function buildCsv(data: ExportData): string {
   const personName = new Map(data.people.map((p) => [p.id, p.name]));
   const memberById = new Map(data.members.map((m) => [m.user_id, m]));
   const extras = extrasByGift(data.recipients);
+  const receiptCount = new Map<string, number>();
+  for (const r of data.giftReceipts ?? []) receiptCount.set(r.gift_id, (receiptCount.get(r.gift_id) ?? 0) + 1);
 
   const giftsByPerson = new Map<string, Gift[]>();
   for (const g of data.gifts) giftsByPerson.set(g.person_id, [...(giftsByPerson.get(g.person_id) ?? []), g]);
 
   const people = [...data.people].sort(
-    (a, b) =>
-      (groupOrder.get(a.group_id) ?? 0) - (groupOrder.get(b.group_id) ?? 0) || a.name.localeCompare(b.name),
+    (a, b) => (groupOrder.get(a.group_id) ?? 0) - (groupOrder.get(b.group_id) ?? 0) || a.name.localeCompare(b.name),
   );
 
   const rows: string[][] = [];
@@ -88,6 +101,7 @@ export function buildCsv(data: ExportData): string {
         g.payment_method ?? '',
         g.created_by ? memberName(memberById.get(g.created_by)) : 'Someone',
         day(g.created_at),
+        String(receiptCount.get(g.id) ?? 0),
       ]);
     }
   }

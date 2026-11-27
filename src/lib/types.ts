@@ -87,6 +87,23 @@ export interface GiftRecipient {
   household_id: string;
 }
 
+/** A receipt photo; one receipt can cover several gifts. `total` is optional. */
+export interface Receipt {
+  id: string;
+  household_id: string;
+  photo_path: string;
+  total: Cents | null;
+  store: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface GiftReceipt {
+  gift_id: string;
+  receipt_id: string;
+  household_id: string;
+}
+
 export interface GiftEvent {
   id: number;
   gift_id: string;
@@ -106,12 +123,19 @@ export const fromDb = {
     budget: toCents(r.budget as string) ?? 0,
     photo_path: (r.photo_path as string | null) ?? null,
   }),
-  group: (r: Row): Group => ({ ...(r as unknown as Group), budget: toCents(r.budget as string) }),
+  group: (r: Row): Group => ({
+    ...(r as unknown as Group),
+    budget: toCents(r.budget as string),
+  }),
   person: (r: Row): Person => ({
     ...(r as unknown as Person),
     family_id: (r.family_id as string | null) ?? null,
     headcount: Number(r.headcount ?? 1) || 1,
     budget: toCents(r.budget as string),
+  }),
+  receipt: (r: Row): Receipt => ({
+    ...(r as unknown as Receipt),
+    total: toCents(r.total as string),
   }),
   family: (r: Row): Family => r as unknown as Family,
   gift: (r: Row): Gift => ({

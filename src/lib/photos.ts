@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { PHOTO_BUCKET, supabase } from './supabase';
 
 const MAX_WIDTH = 1200;
+// Receipts are printed text, so they keep more detail.
+const RECEIPT_MAX_WIDTH = 1600;
 const QUALITY = 0.82;
 
 async function loadBitmap(file: Blob): Promise<ImageBitmap | HTMLImageElement> {
@@ -32,12 +34,12 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string): Promise<Blob | n
 }
 
 /** Resizes to at most 1200px wide and re-encodes as WebP (or JPEG if WebP isn't supported). */
-export async function resizeImage(file: Blob): Promise<{ blob: Blob; ext: 'webp' | 'jpg' }> {
+export async function resizeImage(file: Blob, maxWidth = MAX_WIDTH): Promise<{ blob: Blob; ext: 'webp' | 'jpg' }> {
   if (!file.type.startsWith('image/')) throw new Error('That file is not a picture.');
   const img = await loadBitmap(file);
   const w = 'naturalWidth' in img ? img.naturalWidth : img.width;
   const h = 'naturalHeight' in img ? img.naturalHeight : img.height;
-  const scale = Math.min(1, MAX_WIDTH / w);
+  const scale = Math.min(1, maxWidth / w);
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(w * scale);
   canvas.height = Math.round(h * scale);
@@ -58,11 +60,11 @@ export async function resizeImage(file: Blob): Promise<{ blob: Blob; ext: 'webp'
 /** Resizes and uploads a photo. Returns the storage path to save on the row. */
 export async function uploadPhoto(
   householdId: string,
-  kind: 'gifts' | 'people' | 'household',
+  kind: 'gifts' | 'people' | 'household' | 'receipts',
   id: string,
   file: Blob,
 ): Promise<string> {
-  const { blob, ext } = await resizeImage(file);
+  const { blob, ext } = await resizeImage(file, kind === 'receipts' ? RECEIPT_MAX_WIDTH : MAX_WIDTH);
   // A new name each time, so a cached signed URL never shows the old picture.
   const path = `${householdId}/${kind}/${id}-${Date.now().toString(36)}.${ext}`;
   const { error } = await supabase.storage.from(PHOTO_BUCKET).upload(path, blob, {
@@ -95,7 +97,10 @@ export async function signedUrl(path: string): Promise<string | null> {
       .then(({ data, error }) => {
         pending.delete(path);
         if (error || !data) return null;
-        cache.set(path, { url: data.signedUrl, expires: Date.now() + (TTL_SECONDS - 600) * 1000 });
+        cache.set(path, {
+          url: data.signedUrl,
+          expires: Date.now() + (TTL_SECONDS - 600) * 1000,
+        });
         return data.signedUrl;
       });
     pending.set(path, p);

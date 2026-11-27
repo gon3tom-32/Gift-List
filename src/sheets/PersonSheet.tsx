@@ -200,7 +200,7 @@ export function PersonSheet({
               <span>This is a group of people who all get the same gift</span>
             </label>
             {asGroup && (
-              <Field label="How many people?" hint="Prices you enter are for one person; the app multiplies by this number.">
+              <Field label="How many people?" hint="One gift for the whole group. Its price is the full spend, and the app shows about what it works out to each.">
                 {(id, describedBy) => (
                   <input
                     id={id}

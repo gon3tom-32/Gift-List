@@ -18,8 +18,9 @@ Enforced by before-insert triggers in `supabase/migrations/0008_limits.sql`. The
 | Groups | 30 |
 | Families | 100 |
 | Gifts with a photo | 200 |
+| Receipts | 300 |
 
-Photos are also limited by the `gift-photos` bucket: 5 MB, JPEG/WebP/PNG. The app resizes to 1200 px before upload. To change a cap, add a new migration and update this table.
+Photos are also limited by the `gift-photos` bucket: 5 MB, JPEG/WebP/PNG. The app resizes to 1200 px before upload (receipts: 1600 px). To change a cap, add a new migration and update this table.
 
 ## Dashboard setup (only the project owner can do this)
 Supabase's built-in email is tiny (a few emails per hour) and meant for testing. Before sharing widely:
